@@ -13,6 +13,7 @@ interface UserWithRole {
   name: string;
   email: string;
   role?: string;
+  
 }
 
 export const authOptions: AuthOptions = {
