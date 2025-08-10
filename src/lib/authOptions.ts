@@ -1,7 +1,6 @@
 // src/lib/authOptions.ts
 // src/lib/authOptions.ts
 // src/lib/authOptions.ts
-// src/lib/authOptions.ts
 import { User, Account, Profile, Session } from "next-auth";
 import type { AdapterUser } from "next-auth/adapters";
 import { JWT } from "next-auth/jwt";
@@ -11,7 +10,7 @@ import clientPromise from "@/lib/mongodb";
 
 interface UserWithRole extends User {
   role?: string;
-  // Do NOT redefine id or name to avoid conflicts with NextAuth's User type
+  // Avoid redefining id or name here to prevent conflicts
 }
 
 export const authOptions = {
@@ -19,7 +18,7 @@ export const authOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
@@ -34,6 +33,7 @@ export const authOptions = {
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
 
+        // Return user object with role
         return {
           id: user._id.toString(),
           name: user.name,
@@ -46,7 +46,7 @@ export const authOptions = {
 
   callbacks: {
     async jwt(params: {
-      token: JWT & { role?: string };
+      token: JWT & { role?: string; accessToken?: string };
       user?: UserWithRole | AdapterUser | null;
       account?: Account | null;
       profile?: Profile;
@@ -55,9 +55,21 @@ export const authOptions = {
       session?: Session;
     }): Promise<JWT & { role?: string }> {
       const { token, user } = params;
+
+      // Safe startsWith check example for accessToken (optional)
+      if (
+        token.accessToken &&
+        typeof token.accessToken === "string" &&
+        token.accessToken.startsWith("Bearer ")
+      ) {
+        // You can add any logic here if you use accessToken
+      }
+
+      // Set user role in token if available
       if (user && "role" in user) {
         token.role = user.role;
       }
+
       return token;
     },
 
@@ -73,6 +85,9 @@ export const authOptions = {
     },
   },
 
-  session: { strategy: "jwt" as const },
+  session: {
+    strategy: "jwt",
+  },
+
   secret: process.env.NEXTAUTH_SECRET,
 };

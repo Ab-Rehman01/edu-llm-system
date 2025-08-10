@@ -2,10 +2,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
-import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/authOptions";
-
-export const dynamic = "force-dynamic";
+import clientPromise from "@/lib/mongodb";
 
 interface SessionUser {
   role?: string;
@@ -13,21 +11,26 @@ interface SessionUser {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions, { req });
+  try {
+    // Next.js 15 compatible getServerSession call (pass req, authOptions)
+    const session = await getServerSession(req, authOptions);
+    const user = session?.user as SessionUser | undefined;
 
-  const user = session?.user as SessionUser | undefined;
+    if (!session || user?.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  if (!session || user?.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const client = await clientPromise;
+    const db = client.db("education-system");
+
+    const users = await db
+      .collection("users")
+      .find({}, { projection: { password: 0 } })
+      .toArray();
+
+    return NextResponse.json(users);
+  } catch (error) {
+    console.error("API /admin/users error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-
-  const client = await clientPromise;
-  const db = client.db("education-system");
-
-  const users = await db
-    .collection("users")
-    .find({}, { projection: { password: 0 } })
-    .toArray();
-
-  return NextResponse.json(users);
 }
