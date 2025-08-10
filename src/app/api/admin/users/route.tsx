@@ -1,11 +1,11 @@
 //src/app/api/admin/users/route.tsx
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { unstable_getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth/next";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/authOptions";
 
-export const dynamic = "force-dynamic"; // <-- ye zaroor dalein
+export const dynamic = "force-dynamic";
 
 interface SessionUser {
   role?: string;
@@ -13,25 +13,21 @@ interface SessionUser {
 }
 
 export async function GET(req: NextRequest) {
-  try {
-    const session = await unstable_getServerSession(authOptions, req);
-    const user = session?.user as SessionUser | undefined;
+  const session = await getServerSession(authOptions, { req });
 
-    if (!session || user?.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const user = session?.user as SessionUser | undefined;
 
-    const client = await clientPromise;
-    const db = client.db("education-system");
-
-    const users = await db
-      .collection("users")
-      .find({}, { projection: { password: 0 } })
-      .toArray();
-
-    return NextResponse.json(users);
-  } catch (error) {
-    console.error("API /admin/users error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  if (!session || user?.role !== "admin") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const client = await clientPromise;
+  const db = client.db("education-system");
+
+  const users = await db
+    .collection("users")
+    .find({}, { projection: { password: 0 } })
+    .toArray();
+
+  return NextResponse.json(users);
 }
