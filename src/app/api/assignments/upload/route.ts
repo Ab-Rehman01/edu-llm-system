@@ -1,7 +1,7 @@
 //src/app/api/assignments/upload/route.ts
 
 import { NextResponse } from "next/server";
-import formidable from "formidable";
+import formidable, { File, Fields, Files, IncomingForm } from "formidable";
 import fs from "fs";
 import path from "path";
 
@@ -12,10 +12,9 @@ export const config = {
 };
 
 export async function POST(req: Request): Promise<Response> {
-  const form = new formidable.IncomingForm();
+  const form = new IncomingForm();
 
   const uploadDir = path.join(process.cwd(), "public", "uploads");
-
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
@@ -24,31 +23,31 @@ export async function POST(req: Request): Promise<Response> {
   form.keepExtensions = true;
 
   return new Promise<Response>((resolve) => {
-    form.parse(req as any, (err: unknown, fields: unknown, files: any) => {
+    form.parse(req as any, (err: Error | null, fields: Fields, files: Files) => {
       if (err) {
-        resolve(
-          NextResponse.json({ error: "Upload error" }, { status: 500 })
-        );
+        resolve(NextResponse.json({ error: "Upload error" }, { status: 500 }));
         return;
       }
 
-      const file = files?.assignment;
+      // Type cast to File or File[]
+      const file = files.assignment as File | File[] | undefined;
 
       if (!file) {
-        resolve(
-          NextResponse.json({ error: "No file uploaded" }, { status: 400 })
-        );
+        resolve(NextResponse.json({ error: "No file uploaded" }, { status: 400 }));
         return;
       }
 
-      const newPath = path.join(uploadDir, file.originalFilename || file.newFilename);
+      // If multiple files, take first
+      const fileData = Array.isArray(file) ? file[0] : file;
 
-      fs.renameSync(file.filepath, newPath);
+      const newPath = path.join(uploadDir, fileData.originalFilename || fileData.newFilename);
+
+      fs.renameSync(fileData.filepath, newPath);
 
       resolve(
         NextResponse.json({
           message: "File uploaded successfully",
-          filename: file.originalFilename || file.newFilename,
+          filename: fileData.originalFilename || fileData.newFilename,
         })
       );
     });

@@ -5,6 +5,11 @@ import clientPromise from "@/lib/mongodb";
 import { JWT } from "next-auth/jwt";
 import { Session, User } from "next-auth";
 
+interface UserWithRole extends User {
+  role?: string;
+  id: string; // id ko required string banaya
+}
+
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -25,21 +30,26 @@ export const authOptions = {
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
 
-        return { id: user._id.toString(), name: user.name, email: user.email, role: user.role };
+        return { 
+          id: user._id.toString(), 
+          name: user.name, 
+          email: user.email, 
+          role: user.role 
+        };
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }: { token: JWT; user?: User }) {
-      if (user) token.role = user.role;
-      return token;
-    },
-    async session({ session, token }: { session: Session; token: JWT }) {
-      (session.user as any).id = token.sub;
-      (session.user as any).role = token.role;
-      return session;
-    },
+ callbacks: {
+  async jwt({ token, user }: { token: JWT; user?: UserWithRole }) {
+    if (user) token.role = user.role;
+    return token;
   },
+  async session({ session, token }: { session: Session; token: JWT }) {
+    (session.user as UserWithRole).id = typeof token.sub === "string" ? token.sub : undefined;
+    (session.user as UserWithRole).role = typeof token.role === "string" ? token.role : undefined;
+    return session;
+  },
+},
   session: { strategy: "jwt" as const },
   secret: process.env.NEXTAUTH_SECRET,
 };
