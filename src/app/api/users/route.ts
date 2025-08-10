@@ -1,29 +1,17 @@
 //src/app/api/users/route.ts
-import { getServerSession } from "next-auth";
-import clientPromise from "@/lib/mongodb";
-import { authOptions } from "@/lib/authOptions";
 import { NextResponse } from "next/server";
-
-interface SessionUser {
-  role?: string;
-  [key: string]: unknown;
-}
+import clientPromise from "@/lib/mongodb";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const user = session?.user as SessionUser | undefined;
+  try {
+    const client = await clientPromise;
+    const db = client.db("education-system");
 
-  if (!session || user?.role !== "admin") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Password hata kar users list la rahe hain
+    const users = await db.collection("users").find({}, { projection: { password: 0 } }).toArray();
+
+    return NextResponse.json(users);
+  } catch (error) {
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-
-  const client = await clientPromise;
-  const db = client.db("education-system");
-
-  const users = await db
-    .collection("users")
-    .find({}, { projection: { password: 0 } })
-    .toArray();
-
-  return NextResponse.json(users);
 }

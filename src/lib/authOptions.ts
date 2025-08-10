@@ -1,19 +1,21 @@
 // src/lib/authOptions.ts
 // src/lib/authOptions.ts
 // src/lib/authOptions.ts
-import { User, Account, Profile, Session } from "next-auth";
-import type { AdapterUser } from "next-auth/adapters";
-import { JWT } from "next-auth/jwt";
+// src/lib/authOptions.ts
+// src/lib/authOptions.ts
+import type { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import clientPromise from "@/lib/mongodb";
 
-interface UserWithRole extends User {
+interface UserWithRole {
+  id: string;
+  name: string;
+  email: string;
   role?: string;
-  // Avoid redefining id or name here to prevent conflicts
 }
 
-export const authOptions = {
+export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -33,60 +35,34 @@ export const authOptions = {
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
 
-        // Return user object with role
         return {
           id: user._id.toString(),
           name: user.name,
           email: user.email,
           role: user.role,
-        };
+        } as UserWithRole;
       },
     }),
   ],
 
   callbacks: {
-    async jwt(params: {
-      token: JWT & { role?: string; accessToken?: string };
-      user?: UserWithRole | AdapterUser | null;
-      account?: Account | null;
-      profile?: Profile;
-      trigger?: "signIn" | "signUp" | "update";
-      isNewUser?: boolean;
-      session?: Session;
-    }): Promise<JWT & { role?: string }> {
-      const { token, user } = params;
-
-      // Safe startsWith check example for accessToken (optional)
-      if (
-        token.accessToken &&
-        typeof token.accessToken === "string" &&
-        token.accessToken.startsWith("Bearer ")
-      ) {
-        // You can add any logic here if you use accessToken
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as UserWithRole).role;
       }
-
-      // Set user role in token if available
-      if (user && "role" in user) {
-        token.role = user.role;
-      }
-
       return token;
     },
-
-    async session(params: { session: Session; token: JWT & { role?: string } }): Promise<Session & { user: UserWithRole }> {
-      const { session, token } = params;
+    async session({ session, token }) {
       if (session.user) {
-        if (typeof token.sub === "string") {
-          (session.user as UserWithRole).id = token.sub;
-        }
-        (session.user as UserWithRole).role = token.role;
+        session.user.role = token.role;
+        session.user.id = token.sub;
       }
-      return session as Session & { user: UserWithRole };
+      return session;
     },
   },
 
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
   },
 
   secret: process.env.NEXTAUTH_SECRET,
