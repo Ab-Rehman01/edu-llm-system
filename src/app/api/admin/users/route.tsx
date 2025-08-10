@@ -2,22 +2,36 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { unstable_getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
 import clientPromise from "@/lib/mongodb";
+import { authOptions } from "@/lib/authOptions";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"; // <-- ye zaroor dalein
+
+interface SessionUser {
+  role?: string;
+  [key: string]: unknown;
+}
 
 export async function GET(req: NextRequest) {
   try {
     const session = await unstable_getServerSession(authOptions, req);
-    if (!session?.user?.role || session.user.role !== "admin") {
+    const user = session?.user as SessionUser | undefined;
+
+    if (!session || user?.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
     const client = await clientPromise;
-    const users = await client.db("education-system").collection("users").find({}, { projection: { password: 0 } }).toArray();
+    const db = client.db("education-system");
+
+    const users = await db
+      .collection("users")
+      .find({}, { projection: { password: 0 } })
+      .toArray();
+
     return NextResponse.json(users);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("API /admin/users error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
