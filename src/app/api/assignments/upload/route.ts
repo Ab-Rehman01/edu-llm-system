@@ -1,7 +1,7 @@
 //src/app/api/assignments/upload/route.ts
-
+// src/app/api/assignments/upload/route.ts
 import { NextResponse } from "next/server";
-import formidable, { File, Fields, Files, IncomingForm } from "formidable";
+import formidable from "formidable";
 import fs from "fs";
 import path from "path";
 
@@ -11,8 +11,19 @@ export const config = {
   },
 };
 
+interface FormidableFile {
+  filepath: string;
+  originalFilename?: string;
+  newFilename: string;
+  mimetype?: string;
+  size: number;
+}
+
+type FormFields = Record<string, any>;
+type FormFiles = Record<string, FormidableFile | FormidableFile[]>;
+
 export async function POST(req: Request): Promise<Response> {
-  const form = new IncomingForm();
+  const form = new formidable.IncomingForm();
 
   const uploadDir = path.join(process.cwd(), "public", "uploads");
   if (!fs.existsSync(uploadDir)) {
@@ -23,33 +34,32 @@ export async function POST(req: Request): Promise<Response> {
   form.keepExtensions = true;
 
   return new Promise<Response>((resolve) => {
-    form.parse(req as any, (err: Error | null, fields: Fields, files: Files) => {
-      if (err) {
-        resolve(NextResponse.json({ error: "Upload error" }, { status: 500 }));
-        return;
+    form.parse(
+      req as unknown as NodeJS.ReadableStream,
+      (err: Error | null, fields: FormFields, files: FormFiles) => {
+        if (err) {
+          resolve(NextResponse.json({ error: "Upload error" }, { status: 500 }));
+          return;
+        }
+
+        const fileField = files.assignment;
+        const file = Array.isArray(fileField) ? fileField[0] : fileField;
+
+        if (!file) {
+          resolve(NextResponse.json({ error: "No file uploaded" }, { status: 400 }));
+          return;
+        }
+
+        const newPath = path.join(uploadDir, file.originalFilename || file.newFilename);
+        fs.renameSync(file.filepath, newPath);
+
+        resolve(
+          NextResponse.json({
+            message: "File uploaded successfully",
+            filename: file.originalFilename || file.newFilename,
+          })
+        );
       }
-
-      // Type cast to File or File[]
-      const file = files.assignment as File | File[] | undefined;
-
-      if (!file) {
-        resolve(NextResponse.json({ error: "No file uploaded" }, { status: 400 }));
-        return;
-      }
-
-      // If multiple files, take first
-      const fileData = Array.isArray(file) ? file[0] : file;
-
-      const newPath = path.join(uploadDir, fileData.originalFilename || fileData.newFilename);
-
-      fs.renameSync(fileData.filepath, newPath);
-
-      resolve(
-        NextResponse.json({
-          message: "File uploaded successfully",
-          filename: fileData.originalFilename || fileData.newFilename,
-        })
-      );
-    });
+    );
   });
 }
