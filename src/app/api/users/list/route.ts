@@ -9,8 +9,7 @@ export async function GET() {
     const users = await db.collection("users").find().toArray();
 
     return NextResponse.json(users);
-  } catch (_error) {
-    // ignore unused variable by prefixing with _
+  } catch {
     return NextResponse.json({ message: "Failed to fetch users" }, { status: 500 });
   }
 }

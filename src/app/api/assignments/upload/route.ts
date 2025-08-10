@@ -19,7 +19,7 @@ interface FormidableFile {
   size: number;
 }
 
-type FormFields = Record<string, any>;
+type FormFields = Record<string, string | string[]>;
 type FormFiles = Record<string, FormidableFile | FormidableFile[]>;
 
 export async function POST(req: Request): Promise<Response> {

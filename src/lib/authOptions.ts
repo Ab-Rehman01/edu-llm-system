@@ -1,6 +1,7 @@
 // src/lib/authOptions.ts
 // src/lib/authOptions.ts
 // src/lib/authOptions.ts
+// src/lib/authOptions.ts
 import { User, Account, Profile, Session } from "next-auth";
 import type { AdapterUser } from "next-auth/adapters";
 import { JWT } from "next-auth/jwt";
@@ -9,8 +10,8 @@ import bcrypt from "bcryptjs";
 import clientPromise from "@/lib/mongodb";
 
 interface UserWithRole extends User {
-  role?: string;  // add role as optional field
-  // do NOT redefine id here to avoid conflict, keep it as string required
+  role?: string;
+  // Do NOT redefine id or name to avoid conflicts with NextAuth's User type
 }
 
 export const authOptions = {
@@ -33,38 +34,42 @@ export const authOptions = {
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
 
-        return { id: user._id.toString(), name: user.name, email: user.email, role: user.role };
+        return {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        };
       },
     }),
   ],
 
   callbacks: {
     async jwt(params: {
-      token: JWT;
-      user?: User | AdapterUser | null;
+      token: JWT & { role?: string };
+      user?: UserWithRole | AdapterUser | null;
       account?: Account | null;
       profile?: Profile;
       trigger?: "signIn" | "signUp" | "update";
       isNewUser?: boolean;
-      session?: any;
-    }): Promise<JWT> {
+      session?: Session;
+    }): Promise<JWT & { role?: string }> {
       const { token, user } = params;
-      if (user) {
-        (token as any).role = (user as any).role;
+      if (user && "role" in user) {
+        token.role = user.role;
       }
       return token;
     },
 
-    async session(params: { session: Session; token: JWT }) {
+    async session(params: { session: Session; token: JWT & { role?: string } }): Promise<Session & { user: UserWithRole }> {
       const { session, token } = params;
       if (session.user) {
-        // Only assign id if token.sub is a string (NextAuth usually ensures this)
         if (typeof token.sub === "string") {
           (session.user as UserWithRole).id = token.sub;
         }
-        (session.user as UserWithRole).role = (token as any).role;
+        (session.user as UserWithRole).role = token.role;
       }
-      return session;
+      return session as Session & { user: UserWithRole };
     },
   },
 
