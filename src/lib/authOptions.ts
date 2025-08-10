@@ -1,8 +1,10 @@
+// src/lib/authOptions.ts
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import clientPromise from "@/lib/mongodb";
+import type { NextAuthOptions } from "next-auth"; // import type for options
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -10,7 +12,7 @@ export const authOptions = {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials?: Record<string, string>) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const client = await clientPromise;
@@ -27,16 +29,16 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }: { token: any; user?: any }) {
-      if (user) token.role = user.role;
+    async jwt({ token, user }) {
+      if (user) token.role = (user as any).role;
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }) {
       (session.user as any).id = token.sub;
-      (session.user as any).role = token.role;
+      (session.user as any).role = token.role as string;
       return session;
     },
   },
-  session: { strategy: "jwt" as const },
+  session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
 };

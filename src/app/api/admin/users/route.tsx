@@ -1,12 +1,12 @@
+//src/app/api/admin/users/route.tsx
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
-import { authOptions } from "@/lib/authOptions";  // sirf ye import chahiye
+import { authOptions } from "@/lib/authOptions";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);  // authOptions use karein
+  const session = await getServerSession(authOptions);
 
-  // Access check
   if (!session || (session.user as any).role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -14,7 +14,6 @@ export async function GET() {
   const client = await clientPromise;
   const db = client.db("education-system");
 
-  // Hide password field
   const users = await db
     .collection("users")
     .find({}, { projection: { password: 0 } })

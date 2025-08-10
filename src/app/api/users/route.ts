@@ -1,6 +1,8 @@
+//src/app/api/users/route.ts
+
 import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
-import { authOptions } from "@/lib/authOptions";  // yahan se import karein
+import { authOptions } from "@/lib/authOptions";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
