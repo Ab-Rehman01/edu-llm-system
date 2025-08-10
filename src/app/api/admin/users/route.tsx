@@ -1,6 +1,7 @@
 //src/app/api/admin/users/route.tsx
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { NextRequest } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/authOptions";
 
@@ -9,8 +10,8 @@ interface SessionUser {
   [key: string]: unknown;
 }
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions, req);
   const user = session?.user as SessionUser | undefined;
 
   if (!session || user?.role !== "admin") {
