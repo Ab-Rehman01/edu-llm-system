@@ -1,0 +1,21 @@
+import { getServerSession } from "next-auth";
+import clientPromise from "@/lib/mongodb";
+import { authOptions } from "@/lib/authOptions";  // yahan se import karein
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+
+  if (!session || (session.user as any).role !== "admin") {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  }
+
+  const client = await clientPromise;
+  const db = client.db("education-system");
+
+  const users = await db
+    .collection("users")
+    .find({}, { projection: { password: 0 } })
+    .toArray();
+
+  return new Response(JSON.stringify(users));
+}
