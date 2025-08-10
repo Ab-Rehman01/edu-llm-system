@@ -4,15 +4,14 @@ import type { NextRequest } from "next/server";
 import { unstable_getServerSession } from "next-auth/next"; // <--- change here
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/authOptions";
-
+export const dynamic = "force-dynamic";
 interface SessionUser {
   role?: string;
   [key: string]: unknown;
 }
-
 export async function GET(req: NextRequest) {
   try {
-    const session = await unstable_getServerSession(authOptions, req); // <--- change here
+    const session = await unstable_getServerSession(authOptions, req);
     const user = session?.user as SessionUser | undefined;
 
     if (!session || user?.role !== "admin") {
