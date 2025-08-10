@@ -1,7 +1,7 @@
 //src/app/api/assignments/upload/route.ts
 
 import { NextResponse } from "next/server";
-import formidable, { File, Fields, Files, IncomingForm } from "formidable";
+import formidable from "formidable";
 import fs from "fs";
 import path from "path";
 
@@ -12,7 +12,7 @@ export const config = {
 };
 
 export async function POST(req: Request): Promise<Response> {
-  const form = new IncomingForm();
+  const form = new formidable.IncomingForm();
 
   const uploadDir = path.join(process.cwd(), "public", "uploads");
 
@@ -24,36 +24,33 @@ export async function POST(req: Request): Promise<Response> {
   form.keepExtensions = true;
 
   return new Promise<Response>((resolve) => {
-    form.parse(
-      req as unknown as NodeJS.ReadableStream,
-      (err: Error | null, fields: Fields, files: Files) => {
-        if (err) {
-          resolve(NextResponse.json({ error: "Upload error" }, { status: 500 }));
-          return;
-        }
-
-        // 'assignment' is the field name expected in the form-data
-        const file = files.assignment as File | File[] | undefined;
-
-        if (!file) {
-          resolve(NextResponse.json({ error: "No file uploaded" }, { status: 400 }));
-          return;
-        }
-
-        // Handle array of files or single file
-        const fileToUse = Array.isArray(file) ? file[0] : file;
-
-        const newPath = path.join(uploadDir, fileToUse.originalFilename || fileToUse.newFilename || "unknown");
-
-        fs.renameSync(fileToUse.filepath, newPath);
-
+    form.parse(req as any, (err: unknown, fields: unknown, files: any) => {
+      if (err) {
         resolve(
-          NextResponse.json({
-            message: "File uploaded successfully",
-            filename: fileToUse.originalFilename || fileToUse.newFilename,
-          })
+          NextResponse.json({ error: "Upload error" }, { status: 500 })
         );
+        return;
       }
-    );
+
+      const file = files?.assignment;
+
+      if (!file) {
+        resolve(
+          NextResponse.json({ error: "No file uploaded" }, { status: 400 })
+        );
+        return;
+      }
+
+      const newPath = path.join(uploadDir, file.originalFilename || file.newFilename);
+
+      fs.renameSync(file.filepath, newPath);
+
+      resolve(
+        NextResponse.json({
+          message: "File uploaded successfully",
+          filename: file.originalFilename || file.newFilename,
+        })
+      );
+    });
   });
 }

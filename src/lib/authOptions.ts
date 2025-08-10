@@ -2,9 +2,10 @@
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import clientPromise from "@/lib/mongodb";
-import type { NextAuthOptions } from "next-auth"; // import type for options
+import { JWT } from "next-auth/jwt";
+import { Session, User } from "next-auth";
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -12,7 +13,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials?: Record<string, string>) {
         if (!credentials?.email || !credentials?.password) return null;
 
         const client = await clientPromise;
@@ -29,16 +30,16 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.role = (user as any).role;
+    async jwt({ token, user }: { token: JWT; user?: User }) {
+      if (user) token.role = user.role;
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       (session.user as any).id = token.sub;
-      (session.user as any).role = token.role as string;
+      (session.user as any).role = token.role;
       return session;
     },
   },
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt" as const },
   secret: process.env.NEXTAUTH_SECRET,
 };

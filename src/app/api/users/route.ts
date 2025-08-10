@@ -1,13 +1,19 @@
 //src/app/api/users/route.ts
-
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/authOptions";
 
+interface UserWithRole {
+  role?: string;
+  [key: string]: any;
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions);
+  const user = session?.user as UserWithRole;
 
-  if (!session || (session.user as any).role !== "admin") {
+  if (!session || user.role !== "admin") {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
