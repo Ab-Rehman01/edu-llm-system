@@ -1,6 +1,6 @@
 //src/app/api/assignments/upload/route.ts
 // src/app/api/assignments/upload/route.ts
-import formidable from "formidable";
+import { IncomingForm } from "formidable";
 import { NextResponse } from "next/server";
 import fs from "fs";
 import cloudinary from "@/lib/cloudinary";
@@ -20,7 +20,8 @@ interface FormidableFile {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  const form = new formidable.IncomingForm();
+const form = new IncomingForm();
+
 
   return new Promise((resolve) => {
     form.parse(req as any, async (err: any, fields: Record<string, any>, files: Record<string, any>) => {
