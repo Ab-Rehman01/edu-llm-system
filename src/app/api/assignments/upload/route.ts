@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getGridFSBucket } from "@/lib/gridfs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
-import { ObjectId } from "mongodb";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -13,7 +12,7 @@ export async function POST(req: NextRequest) {
   }
 
   const formData = await req.formData();
-  const file = formData.get("file") as File;
+  const file = formData.get("file") as File | null;
   const classId = formData.get("classId")?.toString();
 
   if (!file || !classId) {
