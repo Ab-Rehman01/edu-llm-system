@@ -2,6 +2,7 @@
 
 import AssignmentUpload from "@/components/AssignmentUpload";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 type User = {
   _id: string;
@@ -12,13 +13,13 @@ type User = {
 };
 
 export default function AdminDashboard() {
-  // Correctly define state with type
+  const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     fetch("/api/users/list")
       .then(res => res.json())
-      .then(data => setUsers(data.users || data));  // agar aapka api "users" property nahi bhejta to direct use karen
+      .then(data => setUsers(data.users || data)); // Fallback agar API directly array bhejti hai
   }, []);
 
   const updateRole = async (userId: string, role: string) => {
@@ -28,7 +29,6 @@ export default function AdminDashboard() {
       body: JSON.stringify({ userId, role }),
     });
 
-    // Update local state for immediate UI update
     setUsers(users.map(u => (u._id === userId ? { ...u, role } : u)));
   };
 
@@ -66,7 +66,8 @@ export default function AdminDashboard() {
         </tbody>
       </table>
 
-      <AssignmentUpload role="admin"/>
+      {/* Assignment Upload - role dynamically from session */}
+      <AssignmentUpload role={session?.user?.role || ""} />
     </div>
   );
 }
