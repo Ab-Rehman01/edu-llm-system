@@ -4,6 +4,7 @@ import { IncomingForm } from "formidable";
 import { NextResponse } from "next/server";
 import fs from "fs";
 import cloudinary from "@/lib/cloudinary";
+import { Readable } from "stream";
 
 export const config = {
   api: {
@@ -13,14 +14,14 @@ export const config = {
 
 function parseForm(req: Request): Promise<{ fields: Record<string, any>; files: Record<string, any> }> {
   const form = new IncomingForm();
+
   return new Promise((resolve, reject) => {
-    form.parse(
-      req as unknown as NodeJS.ReadableStream,
-      (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
-      }
-    );
+    const nodeReq = Readable.from(req.body as any) as any; // convert to Node Readable stream
+
+    form.parse(nodeReq, (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
+      if (err) reject(err);
+      else resolve({ fields, files });
+    });
   });
 }
 
