@@ -1,7 +1,7 @@
 //src/app/api/assignments/upload/route.ts
 // src/app/api/assignments/upload/route.ts
 import { NextResponse } from "next/server";
-import formidable from "formidable";
+import { IncomingForm } from "formidable";
 import fs from "fs";
 import { Readable } from "stream";
 import cloudinary from "@/lib/cloudinary";
@@ -27,7 +27,8 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(await req.arrayBuffer());
     const readable = bufferToStream(buffer);
 
-    const form = new formidable.IncomingForm();
+    const form = new IncomingForm();
+
 
     // Wrap formidable parse in Promise
     const { fields, files } = await new Promise<{ fields: Record<string, any>; files: Record<string, any> }>((resolve, reject) => {
