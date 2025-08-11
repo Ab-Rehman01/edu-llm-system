@@ -96,7 +96,7 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
     }
 
     try {
-      const res = await fetch("/api/assignment/upload", {
+      const res = await fetch("/api/assignments/upload", {
         method: "POST",
         body: formData,
       });
