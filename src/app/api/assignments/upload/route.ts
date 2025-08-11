@@ -1,8 +1,9 @@
 //src/app/api/assignments/upload/route.ts
 // src/app/api/assignments/upload/route.ts
-import { IncomingForm } from "formidable";
 import { NextResponse } from "next/server";
+import formidable from "formidable";
 import fs from "fs";
+import { Readable } from "stream";
 import cloudinary from "@/lib/cloudinary";
 
 export const config = {
@@ -11,43 +12,37 @@ export const config = {
   },
 };
 
-function parseForm(req: Request): Promise<{ fields: Record<string, any>; files: Record<string, any> }> {
-  return new Promise((resolve, reject) => {
-    const form = new IncomingForm();
-
-    // Convert Web Request body to Node.js readable stream
-    const headers = Object.fromEntries(req.headers.entries());
-
-    // Create a minimal mock of Node.js IncomingMessage
-    const stream = new (require("stream").Readable)({
-      read() {
-        req.body?.getReader().read().then(({ done, value }) => {
-          if (done) {
-            this.push(null);
-          } else {
-            this.push(Buffer.from(value));
-          }
-        });
-      },
-    });
-
-    // Attach headers to stream object because formidable needs them
-    (stream as any).headers = headers;
-
-    form.parse(stream, (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
-  if (err) reject(err);
-  else resolve({ fields, files });
-});
-
-  });
+// Convert ArrayBuffer to Node.js Readable Stream
+function bufferToStream(buffer: Buffer) {
+  const readable = new Readable();
+  readable._read = () => {};
+  readable.push(buffer);
+  readable.push(null);
+  return readable;
 }
 
 export async function POST(req: Request) {
   try {
-    const { fields, files } = await parseForm(req);
+    // Convert request body to buffer then to stream
+    const buffer = Buffer.from(await req.arrayBuffer());
+    const readable = bufferToStream(buffer);
+
+    const form = new formidable.IncomingForm();
+
+    // Wrap formidable parse in Promise
+    const { fields, files } = await new Promise<{ fields: Record<string, any>; files: Record<string, any> }>((resolve, reject) => {
+      form.parse(readable as any, (err: any, fields: any, files: any) => {
+  if (err) {
+    reject(err);
+  } else {
+    resolve({ fields, files });
+  }
+});
+
+    });
 
     const classId = fields.classId as string | undefined;
-    const file = files.file as { filepath: string } | undefined;
+    const file = files.file as any;
 
     if (!file || !classId) {
       return NextResponse.json({ error: "File and classId required" }, { status: 400 });
@@ -67,6 +62,6 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 });
   }
 }
