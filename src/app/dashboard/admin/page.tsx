@@ -66,7 +66,7 @@ export default function AdminDashboard() {
         </tbody>
       </table>
 
-      <AssignmentUpload />
+      <AssignmentUpload role="admin"/>
     </div>
   );
 }
