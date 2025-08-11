@@ -1,45 +1,67 @@
 //src/app/api/assignments/upload/route.ts
+import formidable from "formidable";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/authOptions";
-import { getGridFSBucket } from "@/lib/gridfs";
+import fs from "fs";
+import path from "path";
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
+  const form = new formidable.IncomingForm();
 
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
   }
+  form.uploadDir = uploadDir;
+  form.keepExtensions = true;
 
-  const formData = await req.formData();
-  const file = formData.get("assignment") as File | null;
-  let classId = formData.get("classId") as string | null;
+  return new Promise((resolve) => {
+   form.parse(
+  req as unknown as NodeJS.ReadableStream,
+  (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
+    if (err) {
+      resolve(
+        NextResponse.json({ error: "Upload error: " + err.message }, { status: 500 })
+      );
+      return;
+    }
 
-  // Teacher → auto assign from session
-  if (session.user.role === "teacher") {
-    classId = session.user.classId || null;
-  }
+        const classId = fields.classId as string | undefined;
 
-  if (!file || !classId) {
-    return NextResponse.json(
-      { error: "File and classId required" },
-      { status: 400 }
+        const fileField = files.file;
+        const file = Array.isArray(fileField) ? fileField[0] : fileField;
+
+        if (!file || !classId) {
+          resolve(
+            NextResponse.json({ error: "File and classId required" }, { status: 400 })
+          );
+          return;
+        }
+
+        const newFilePath = path.join(uploadDir, file.newFilename);
+
+        try {
+          fs.renameSync(file.filepath, newFilePath);
+        } catch {
+          resolve(
+            NextResponse.json({ error: "Error saving file" }, { status: 500 })
+          );
+          return;
+        }
+
+        resolve(
+          NextResponse.json({
+            message: "File uploaded successfully",
+            filename: file.originalFilename || file.newFilename,
+            classId,
+          })
+        );
+      }
     );
-  }
-
-  const bucket = await getGridFSBucket();
-
-  const uploadStream = bucket.openUploadStream(file.name, {
-    metadata: {
-      uploadedBy: session.user.email,
-      role: session.user.role,
-      classId,
-    },
   });
-
-  const arrayBuffer = await file.arrayBuffer();
-  uploadStream.end(Buffer.from(arrayBuffer));
-
-  return NextResponse.json({ filename: file.name });
 }
-
