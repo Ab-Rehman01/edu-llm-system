@@ -48,59 +48,113 @@
 //   );
 // }
 
+
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function AssignmentUpload({ role }: { role: string }) {
-  const [file, setFile] = useState<File | null>(null);
+type AssignmentUploadProps = {
+  role: string;
+};
+
+export default function AssignmentUpload({ role }: AssignmentUploadProps) {
+  const [classes, setClasses] = useState<{ _id: string; name: string }[]>([]);
   const [classId, setClassId] = useState("");
-  const [message, setMessage] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Admin ke liye classes list fetch
+  useEffect(() => {
+    if (role === "admin") {
+      fetch("/api/classes/list")
+        .then((res) => res.json())
+        .then((data) => setClasses(data.classes || []))
+        .catch(() => setClasses([]));
+    }
+  }, [role]);
 
+  const handleUpload = async () => {
     if (!file) {
-      setMessage("Please select a file");
+      setStatus("❌ Please select a file");
       return;
     }
 
+    if (role === "admin" && !classId) {
+      setStatus("❌ Please select a class");
+      return;
+    }
+
+    setLoading(true);
+    setStatus("");
+
     const formData = new FormData();
-    formData.append("assignment", file);
+    formData.append("file", file);
 
     if (role === "admin") {
       formData.append("classId", classId);
     }
 
-    const res = await fetch("/api/assignment/upload", {
-      method: "POST",
-      body: formData,
-    });
+    // Teacher ke liye classId backend assign karega
+    try {
+      const res = await fetch("/api/assignment/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await res.json();
-    if (res.ok) {
-      setMessage("Uploaded: " + data.filename);
-    } else {
-      setMessage("Error: " + data.error);
+      const data = await res.json();
+      if (res.ok) {
+        setStatus("✅ Assignment uploaded successfully!");
+        setFile(null);
+        setClassId("");
+      } else {
+        setStatus(`❌ Upload failed: ${data.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      setStatus("❌ Upload failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <div className="p-4 border rounded mt-6">
+      <h2 className="text-lg font-bold mb-2">Upload Assignment</h2>
+
+      {/* Admin ke liye class dropdown */}
       {role === "admin" && (
-        <select value={classId} onChange={(e) => setClassId(e.target.value)}>
-          <option value="">Select Class</option>
-          <option value="class1">Class 1</option>
-          <option value="class2">Class 2</option>
-        </select>
+        <div className="mb-3">
+          <label className="block mb-1">Select Class</label>
+          <select
+            value={classId}
+            onChange={(e) => setClassId(e.target.value)}
+            className="border p-2 w-full"
+          >
+            <option value="">-- Select Class --</option>
+            {classes.map((cls) => (
+              <option key={cls._id} value={cls._id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
 
       <input
         type="file"
         onChange={(e) => setFile(e.target.files?.[0] || null)}
+        className="mb-3 block"
       />
-      <button type="submit">Upload</button>
-      {message && <p>{message}</p>}
-    </form>
+
+      <button
+        onClick={handleUpload}
+        disabled={loading}
+        className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-400"
+      >
+        {loading ? "Uploading..." : "Upload"}
+      </button>
+
+      {status && <p className="mt-3">{status}</p>}
+    </div>
   );
 }
