@@ -7,7 +7,7 @@ import cloudinary from "@/lib/cloudinary";
 
 export const config = {
   api: {
-    bodyParser: false, // zaruri hai file upload ke liye
+    bodyParser: false, // Next.js default body parsing disabled for file uploads
   },
 };
 
@@ -23,59 +23,49 @@ export async function POST(req: Request): Promise<Response> {
   const form = new formidable.IncomingForm();
 
   return new Promise((resolve) => {
-    form.parse(
-  req as any,
-  async (
-    err: Error | null,
-    fields: Record<string, any>,
-    files: Record<string, any>
-  ) => {
-      console.log("Parsing form data...");
+    form.parse(req as any, async (err: any, fields: Record<string, any>, files: Record<string, any>) => {
       if (err) {
-        console.error("Form parse error:", err);
+        console.error("Form parsing error:", err);
         resolve(
           NextResponse.json({ error: "Error parsing the files" }, { status: 500 })
         );
         return;
       }
 
-      console.log("Fields received:", fields);
-      console.log("Files received:", files);
-
       const classId = fields.classId as string | undefined;
-      const file = files.file as FormidableFile | undefined;
+      const file = files.file as unknown as FormidableFile | undefined;
 
       if (!file || !classId) {
-        console.log("Missing file or classId");
         resolve(
-          NextResponse.json(
-            { error: "File and classId required" },
-            { status: 400 }
-          )
+          NextResponse.json({ error: "File and classId required" }, { status: 400 })
         );
         return;
       }
 
       try {
-  const result = await cloudinary.uploader.upload(file.filepath, {
-    folder: `assignments/${classId}`,
-    resource_type: "auto",
-  });
-  fs.unlinkSync(file.filepath);
-  resolve(
-    NextResponse.json({
-      message: "Upload successful",
-      url: result.secure_url,
-      public_id: result.public_id,
-    })
-  );
-} catch (upload) {
-        console.error("Cloudinary upload error:", upload);
+        console.log("Uploading file:", file.originalFilename, "for classId:", classId);
+
+        const result = await cloudinary.uploader.upload(file.filepath, {
+          folder: `assignments/${classId}`,
+          resource_type: "auto",
+        });
+
+        fs.unlinkSync(file.filepath); // delete temp file after upload
+
+        console.log("Upload successful:", result.secure_url);
+
         resolve(
-          NextResponse.json(
-            { error: "Upload to Cloudinary failed" },
-            { status: 500 }
-          )
+          NextResponse.json({
+            message: "Upload successful",
+            filename: file.originalFilename,
+            url: result.secure_url,
+            public_id: result.public_id,
+          })
+        );
+      } catch (uploadError) {
+        console.error("Cloudinary upload error:", uploadError);
+        resolve(
+          NextResponse.json({ error: "Upload to Cloudinary failed" }, { status: 500 })
         );
       }
     });
