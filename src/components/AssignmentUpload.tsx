@@ -47,7 +47,7 @@
 //     </form>
 //   );
 // }
-
+//components/AssignmentUpload.tsx
 
 "use client";
 
@@ -69,7 +69,7 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
     if (role === "admin") {
       fetch("/api/classes/list")
         .then((res) => res.json())
-        .then((data) => setClasses(data.classes || []))
+        .then((data) => setClasses(data.classes || []))  // Note: backend ab { classes: [...] } bhej raha hai
         .catch(() => setClasses([]));
     }
   }, [role]);
@@ -95,7 +95,6 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
       formData.append("classId", classId);
     }
 
-    // Teacher ke liye classId backend assign karega
     try {
       const res = await fetch("/api/assignment/upload", {
         method: "POST",
@@ -110,7 +109,7 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
       } else {
         setStatus(`❌ Upload failed: ${data.error || "Unknown error"}`);
       }
-    } catch (err) {
+    } catch {
       setStatus("❌ Upload failed. Please try again.");
     } finally {
       setLoading(false);
@@ -158,3 +157,4 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
     </div>
   );
 }
+
