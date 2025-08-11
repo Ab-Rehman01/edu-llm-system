@@ -1,5 +1,4 @@
-//src/app/api/users/list/route.ts
-// src/app/api/assignments/list/route.ts
+// src/app/api/classes/list/route.ts
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 
