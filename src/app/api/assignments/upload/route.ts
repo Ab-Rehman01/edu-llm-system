@@ -4,7 +4,6 @@ import { IncomingForm } from "formidable";
 import { NextResponse } from "next/server";
 import fs from "fs";
 import cloudinary from "@/lib/cloudinary";
-import { Readable } from "stream";
 
 export const config = {
   api: {
@@ -13,19 +12,37 @@ export const config = {
 };
 
 function parseForm(req: Request): Promise<{ fields: Record<string, any>; files: Record<string, any> }> {
-  const form = new IncomingForm();
-
   return new Promise((resolve, reject) => {
-    const nodeReq = Readable.from(req.body as any) as any; // convert to Node Readable stream
+    const form = new IncomingForm();
 
-    form.parse(nodeReq, (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
-      if (err) reject(err);
-      else resolve({ fields, files });
+    // Convert Web Request body to Node.js readable stream
+    const headers = Object.fromEntries(req.headers.entries());
+
+    // Create a minimal mock of Node.js IncomingMessage
+    const stream = new (require("stream").Readable)({
+      read() {
+        req.body?.getReader().read().then(({ done, value }) => {
+          if (done) {
+            this.push(null);
+          } else {
+            this.push(Buffer.from(value));
+          }
+        });
+      },
     });
+
+    // Attach headers to stream object because formidable needs them
+    (stream as any).headers = headers;
+
+    form.parse(stream, (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
+  if (err) reject(err);
+  else resolve({ fields, files });
+});
+
   });
 }
 
-export async function POST(req: Request): Promise<Response> {
+export async function POST(req: Request) {
   try {
     const { fields, files } = await parseForm(req);
 
