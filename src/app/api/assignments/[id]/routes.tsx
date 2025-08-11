@@ -7,7 +7,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const bucket = await getGridFSBucket();
   const stream = bucket.openDownloadStream(new ObjectId(params.id));
 
-  return new Response(stream as any, {
+return new Response(stream as unknown as BodyInit, {
+
     headers: { "Content-Type": "application/octet-stream" },
   });
 }

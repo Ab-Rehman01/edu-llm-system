@@ -1,5 +1,5 @@
 // src/app/api/assignments/list/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getGridFSBucket } from "@/lib/gridfs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/authOptions";
