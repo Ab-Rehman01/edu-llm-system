@@ -57,23 +57,20 @@ export async function POST(req: Request): Promise<Response> {
       }
 
       try {
-        const result = await cloudinary.uploader.upload(file.filepath, {
-          folder: `assignments/${classId}`,
-          resource_type: "auto",
-        });
-
-        // Temporary file ko delete kar dena
-        fs.unlinkSync(file.filepath);
-
-        resolve(
-          NextResponse.json({
-            message: "Upload successful",
-            url: result.secure_url,
-            public_id: result.public_id,
-          })
-        );
-      } catch (uploadError) {
-        console.error("Cloudinary upload error:", uploadError);
+  const result = await cloudinary.uploader.upload(file.filepath, {
+    folder: `assignments/${classId}`,
+    resource_type: "auto",
+  });
+  fs.unlinkSync(file.filepath);
+  resolve(
+    NextResponse.json({
+      message: "Upload successful",
+      url: result.secure_url,
+      public_id: result.public_id,
+    })
+  );
+} catch (upload) {
+        console.error("Cloudinary upload error:", upload);
         resolve(
           NextResponse.json(
             { error: "Upload to Cloudinary failed" },
