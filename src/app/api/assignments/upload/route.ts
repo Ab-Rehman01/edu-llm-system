@@ -10,7 +10,7 @@ export const config = {
   },
 };
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<Response> {
   const form = new formidable.IncomingForm();
 
   const uploadDir = path.join(process.cwd(), "public", "uploads");
@@ -20,45 +20,34 @@ export async function POST(req: Request) {
   form.uploadDir = uploadDir;
   form.keepExtensions = true;
 
-  return new Promise((resolve) => {
-   form.parse(
-  req as unknown as NodeJS.ReadableStream,
-  (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
-    if (err) {
-      resolve(
-        NextResponse.json({ error: "Upload error: " + err.message }, { status: 500 })
-      );
-      return;
-    }
+  return new Promise<Response>((resolve) => {
+    form.parse(
+      req as unknown as NodeJS.ReadableStream,
+      (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
+        if (err) {
+          resolve(
+            NextResponse.json({ error: "Upload error: " + err.message }, { status: 500 })
+          );
+          return;
+        }
 
-        const classId = fields.classId as string | undefined;
-
-        const fileField = files.file;
+        const fileField = files.file || files.assignment; // adjust if your frontend sends 'file' or 'assignment'
         const file = Array.isArray(fileField) ? fileField[0] : fileField;
 
-        if (!file || !classId) {
+        if (!file) {
           resolve(
-            NextResponse.json({ error: "File and classId required" }, { status: 400 })
+            NextResponse.json({ error: "File is required" }, { status: 400 })
           );
           return;
         }
 
-        const newFilePath = path.join(uploadDir, file.newFilename);
-
-        try {
-          fs.renameSync(file.filepath, newFilePath);
-        } catch {
-          resolve(
-            NextResponse.json({ error: "Error saving file" }, { status: 500 })
-          );
-          return;
-        }
+        const newPath = path.join(uploadDir, file.originalFilename || file.newFilename);
+        fs.renameSync(file.filepath, newPath);
 
         resolve(
           NextResponse.json({
             message: "File uploaded successfully",
             filename: file.originalFilename || file.newFilename,
-            classId,
           })
         );
       }
