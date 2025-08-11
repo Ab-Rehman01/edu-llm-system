@@ -1,8 +1,8 @@
 //src/app/api/assignments/upload/route.ts
-import formidable from "formidable";
 import { NextResponse } from "next/server";
+import formidable from "formidable";
+import cloudinary from "@/lib/cloudinary";
 import fs from "fs";
-import path from "path";
 
 export const config = {
   api: {
@@ -10,47 +10,59 @@ export const config = {
   },
 };
 
-export async function POST(req: Request): Promise<Response> {
+type Fields = { [key: string]: string | string[] };
+type Files = { [key: string]: File | File[] };
+
+interface File {
+  filepath: string;
+  originalFilename?: string;
+  newFilename: string;
+  mimetype?: string;
+  size: number;
+}
+
+export async function POST(req: Request) {
   const form = new formidable.IncomingForm();
 
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-  form.uploadDir = uploadDir;
-  form.keepExtensions = true;
+  return new Promise((resolve) => {
+    form.parse(req as any, async (err: Error | null, fields: Fields, files: Files) => {
+      if (err) {
+        resolve(
+          NextResponse.json({ error: "Error parsing the files" }, { status: 500 })
+        );
+        return;
+      }
 
-  return new Promise<Response>((resolve) => {
-    form.parse(
-      req as unknown as NodeJS.ReadableStream,
-      (err: Error | null, fields: Record<string, any>, files: Record<string, any>) => {
-        if (err) {
-          resolve(
-            NextResponse.json({ error: "Upload error: " + err.message }, { status: 500 })
-          );
-          return;
-        }
+      const classId = fields.classId as string | undefined;
+      const file = files.file as File | undefined;
 
-        const fileField = files.file || files.assignment; // adjust if your frontend sends 'file' or 'assignment'
-        const file = Array.isArray(fileField) ? fileField[0] : fileField;
+      if (!file || !classId) {
+        resolve(
+          NextResponse.json({ error: "File and classId required" }, { status: 400 })
+        );
+        return;
+      }
 
-        if (!file) {
-          resolve(
-            NextResponse.json({ error: "File is required" }, { status: 400 })
-          );
-          return;
-        }
+      try {
+        const result = await cloudinary.uploader.upload(file.filepath, {
+          folder: `assignments/${classId}`,
+          resource_type: "auto",
+        });
 
-        const newPath = path.join(uploadDir, file.originalFilename || file.newFilename);
-        fs.renameSync(file.filepath, newPath);
+        fs.unlinkSync(file.filepath);
 
         resolve(
           NextResponse.json({
-            message: "File uploaded successfully",
-            filename: file.originalFilename || file.newFilename,
+            message: "Upload successful",
+            url: result.secure_url,
+            public_id: result.public_id,
           })
         );
+      } catch (uploadError) {
+        resolve(
+          NextResponse.json({ error: "Upload to Cloudinary failed" }, { status: 500 })
+        );
       }
-    );
+    });
   });
 }
