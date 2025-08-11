@@ -1,65 +1,36 @@
 //src/app/api/assignments/upload/route.ts
-// src/app/api/assignments/upload/route.ts
-import { NextResponse } from "next/server";
-import formidable from "formidable";
-import fs from "fs";
-import path from "path";
+import { NextRequest, NextResponse } from "next/server";
+import { getGridFSBucket } from "@/lib/gridfs";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/authOptions";
+import { ObjectId } from "mongodb";
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-interface FormidableFile {
-  filepath: string;
-  originalFilename?: string;
-  newFilename: string;
-  mimetype?: string;
-  size: number;
-}
-
-type FormFields = Record<string, string | string[]>;
-type FormFiles = Record<string, FormidableFile | FormidableFile[]>;
-
-export async function POST(req: Request): Promise<Response> {
-  const form = new formidable.IncomingForm();
-
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+  if (!session || !["admin", "teacher"].includes(session.user.role)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  form.uploadDir = uploadDir;
-  form.keepExtensions = true;
+  const formData = await req.formData();
+  const file = formData.get("file") as File;
+  const classId = formData.get("classId")?.toString();
 
-  return new Promise<Response>((resolve) => {
-    form.parse(
-      req as unknown as NodeJS.ReadableStream,
-      (err: Error | null, fields: FormFields, files: FormFiles) => {
-        if (err) {
-          resolve(NextResponse.json({ error: "Upload error" }, { status: 500 }));
-          return;
-        }
+  if (!file || !classId) {
+    return NextResponse.json({ error: "File and classId required" }, { status: 400 });
+  }
 
-        const fileField = files.assignment;
-        const file = Array.isArray(fileField) ? fileField[0] : fileField;
-
-        if (!file) {
-          resolve(NextResponse.json({ error: "No file uploaded" }, { status: 400 }));
-          return;
-        }
-
-        const newPath = path.join(uploadDir, file.originalFilename || file.newFilename);
-        fs.renameSync(file.filepath, newPath);
-
-        resolve(
-          NextResponse.json({
-            message: "File uploaded successfully",
-            filename: file.originalFilename || file.newFilename,
-          })
-        );
-      }
-    );
+  const bucket = await getGridFSBucket();
+  const uploadStream = bucket.openUploadStream(file.name, {
+    metadata: {
+      uploaderId: session.user.id,
+      classId,
+      uploadedAt: new Date(),
+    },
   });
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  uploadStream.end(buffer);
+
+  return NextResponse.json({ message: "File uploaded successfully" });
 }
