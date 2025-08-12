@@ -29,19 +29,18 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const classId = url.searchParams.get("classId");
 
-    let query = {};
+    let query: any = {};
     if (classId) {
-      // Agar classId valid ObjectId hai, tab convert karo, warna string se query karo
-      if (ObjectId.isValid(classId)) {
-        query = { classId: new ObjectId(classId) };
-      } else {
-        query = { classId };
-      }
+      query = {
+        $or: [
+          { classId: classId }, // string match
+          ...(ObjectId.isValid(classId) ? [{ classId: new ObjectId(classId) }] : [])
+        ]
+      };
     }
 
     const assignments = await db.collection("assignments").find(query).toArray();
 
-    // Convert _id and classId to string for frontend
     const formatted = assignments.map((a) => ({
       _id: a._id.toString(),
       classId: typeof a.classId === "string" ? a.classId : a.classId.toString(),
@@ -53,6 +52,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ assignments: formatted });
   } catch (error) {
+    console.error("Error fetching assignments:", error);
     return NextResponse.json({ error: "Failed to fetch assignments" }, { status: 500 });
   }
 }
