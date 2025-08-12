@@ -38,14 +38,16 @@ export default function AdminDashboard() {
 
   // Update user role or class
   const updateUser = async (userId: string, updates: Partial<{ role: string; classId: string }>) => {
-    await fetch("/api/users/update", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, ...updates }),
-    });
+  await fetch("/api/users/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, ...updates }),
+  });
 
-    setUsers(users.map(u => (u._id === userId ? { ...u, ...updates } : u)));
-  };
+  setUsers(users.map(u => (u._id === userId ? { ...u, ...updates } : u)));
+};
+
+  
 
   // Redirect admin to selected class page
   const goToClassPage = (classId: string) => {

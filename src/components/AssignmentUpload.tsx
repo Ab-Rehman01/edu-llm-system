@@ -1,11 +1,10 @@
-//components/AssignmentUpload.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 
 interface AssignmentUploadProps {
   role: string;
-  classId: string;
+  classId?: string; // optional prop if admin wants to set from outside
 }
 
 interface ClassItem {
@@ -13,38 +12,46 @@ interface ClassItem {
   name: string;
 }
 
-export default function AssignmentUpload({ role, }: AssignmentUploadProps) {
+interface Assignment {
+  _id: string;
+  url: string;
+  subject: string;
+  classId: string;
+  createdAt: string;
+}
+
+export default function AssignmentUpload({ role, classId: propClassId }: AssignmentUploadProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [selectedClassId, setselectedClassId] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState(propClassId || "");
+  const [subject, setSubject] = useState("");
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch classes from API
-useEffect(() => {
-  async function fetchClasses() {
-    try {
-      const res = await fetch("/api/classes/list");
-      const data = await res.json();
-      setClasses(data.classes || []);
-    } catch (err) {
-      console.error("Error fetching classes:", err);
+  // Assign prop classId to selectedClassId if it changes
+  useEffect(() => {
+    if (propClassId) setSelectedClassId(propClassId);
+  }, [propClassId]);
+
+  // Fetch classes
+  useEffect(() => {
+    async function fetchClasses() {
+      try {
+        const res = await fetch("/api/classes/list");
+        const data = await res.json();
+        setClasses(data.classes || []);
+      } catch (err) {
+        console.error("Error fetching classes:", err);
+      }
     }
-  }
-  fetchClasses();
-}, []);
+    fetchClasses();
+  }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  if (e.target.files && e.target.files[0]) {
-    console.log("Selected file:", e.target.files[0]);
-    setFile(e.target.files[0]);
-  }
-};
-
+  // Upload handler
   const handleUpload = async () => {
-    if (!file || !selectedClassId) {
-      setError("Please select a class and choose a file.");
+    if (!file || !selectedClassId || !subject.trim()) {
+      setError("Please select a class, enter a subject, and choose a file.");
       return;
     }
 
@@ -54,6 +61,7 @@ useEffect(() => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("classId", selectedClassId);
+    formData.append("subject", subject.trim());
     formData.append("role", role);
 
     try {
@@ -64,11 +72,12 @@ useEffect(() => {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
-      }
+      if (!res.ok) throw new Error(data.error || "Upload failed");
 
       setUploadedUrl(data.url);
+      setSubject("");
+      setFile(null);
+      // You might want to refresh assignment list here if showing after upload
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -85,7 +94,7 @@ useEffect(() => {
       {/* Class Select Dropdown */}
       <select
         value={selectedClassId}
-        onChange={(e) => setselectedClassId(e.target.value)}
+        onChange={(e) => setSelectedClassId(e.target.value)}
         className="w-full p-2 border rounded mb-4"
       >
         <option value="">Select Class</option>
@@ -96,10 +105,21 @@ useEffect(() => {
         ))}
       </select>
 
+      {/* Subject Input */}
+      <input
+        type="text"
+        placeholder="Enter subject"
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        className="w-full p-2 border rounded mb-4"
+      />
+
       {/* File Upload */}
       <input
         type="file"
-        onChange={handleFileChange}
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
+        }}
         className="w-full p-2 border rounded mb-4"
       />
 
@@ -132,6 +152,7 @@ useEffect(() => {
     </div>
   );
 }
+
 // "use client";
 
 // import { useState } from "react";
