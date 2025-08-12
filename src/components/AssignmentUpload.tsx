@@ -1,17 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AssignmentUploadProps {
-  role: string; // 👈 yeh line add ki
+  role: string;
+}
+
+interface ClassItem {
+  _id: string;
+  name: string;
 }
 
 export default function AssignmentUpload({ role }: AssignmentUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [classId, setClassId] = useState("");
+  const [classes, setClasses] = useState<ClassItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch classes from API
+useEffect(() => {
+  async function fetchClasses() {
+    try {
+      const res = await fetch("/api/classes/list");
+      const data = await res.json();
+      setClasses(data.classes || []);
+    } catch (err) {
+      console.error("Error fetching classes:", err);
+    }
+  }
+  fetchClasses();
+}, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -21,7 +41,7 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
 
   const handleUpload = async () => {
     if (!file || !classId) {
-      setError("Please select a file and enter a class ID.");
+      setError("Please select a class and choose a file.");
       return;
     }
 
@@ -31,7 +51,7 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("classId", classId);
-    formData.append("role", role); // 👈 role bhi API ko bhej sakte ho
+    formData.append("role", role);
 
     try {
       const res = await fetch("/api/assignments/upload", {
@@ -59,20 +79,28 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
         Upload Assignment {role && `(${role})`}
       </h2>
 
-      <input
-        type="text"
-        placeholder="Enter Class ID"
+      {/* Class Select Dropdown */}
+      <select
         value={classId}
         onChange={(e) => setClassId(e.target.value)}
         className="w-full p-2 border rounded mb-4"
-      />
+      >
+        <option value="">Select Class</option>
+        {classes.map((cls) => (
+          <option key={cls._id} value={cls._id}>
+            {cls.name}
+          </option>
+        ))}
+      </select>
 
+      {/* File Upload */}
       <input
         type="file"
         onChange={handleFileChange}
         className="w-full p-2 border rounded mb-4"
       />
 
+      {/* Upload Button */}
       <button
         onClick={handleUpload}
         disabled={uploading}
@@ -81,8 +109,10 @@ export default function AssignmentUpload({ role }: AssignmentUploadProps) {
         {uploading ? "Uploading..." : "Upload"}
       </button>
 
+      {/* Error Message */}
       {error && <p className="text-red-500 mt-3">{error}</p>}
 
+      {/* Uploaded File Link */}
       {uploadedUrl && (
         <div className="mt-4">
           <p className="text-green-600">Upload successful!</p>
