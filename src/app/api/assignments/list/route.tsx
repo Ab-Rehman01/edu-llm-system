@@ -31,13 +31,17 @@ export async function GET(req: Request) {
 
     let query: any = {};
     if (classId) {
-      query = {
-        $or: [
-          { classId: classId }, // string match
-          ...(ObjectId.isValid(classId) ? [{ classId: new ObjectId(classId) }] : [])
-        ]
-      };
-    }
+  if (ObjectId.isValid(classId)) {
+    query = { $or: [{ classId }, { classId: new ObjectId(classId) }] };
+  } else {
+    query = { classId };
+  }
+}
+    //       { classId: classId }, // string match
+    //       ...(ObjectId.isValid(classId) ? [{ classId: new ObjectId(classId) }] : [])
+    //     ]
+    //   };
+    // }
 
     const assignments = await db.collection("assignments").find(query).toArray();
 
