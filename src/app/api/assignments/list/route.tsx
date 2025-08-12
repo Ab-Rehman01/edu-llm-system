@@ -19,7 +19,6 @@
 // src/app/api/assignments/list/route.ts
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
 
 export async function GET(req: Request) {
   try {
@@ -31,23 +30,14 @@ export async function GET(req: Request) {
 
     let query: any = {};
     if (classId) {
-  if (ObjectId.isValid(classId)) {
-    query = { $or: [{ classId }, { classId: new ObjectId(classId) }] };
-  } else {
-    query = { classId };
-  }
-}
-    //       { classId: classId }, // string match
-    //       ...(ObjectId.isValid(classId) ? [{ classId: new ObjectId(classId) }] : [])
-    //     ]
-    //   };
-    // }
+      query = { classId: classId.toString() }; // ✅ Always compare as string
+    }
 
     const assignments = await db.collection("assignments").find(query).toArray();
 
     const formatted = assignments.map((a) => ({
       _id: a._id.toString(),
-      classId: typeof a.classId === "string" ? a.classId : a.classId.toString(),
+      classId: a.classId?.toString(),
       url: a.url,
       public_id: a.public_id,
       filename: a.filename,

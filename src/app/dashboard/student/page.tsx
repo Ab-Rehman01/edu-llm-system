@@ -23,30 +23,29 @@ type Assignment = {
   _id: string;
   url: string;
   classId: string;
-  title: string;
+  filename?: string;
 };
 
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (status !== "authenticated") return; // Wait until logged in
+    if (status !== "authenticated") return; // ✅ Wait until session is loaded
+    if (!session?.user?.classId) return;
 
-    const fetchAssignments = async () => {
-      try {
-        const res = await fetch(`/api/assignments/list?classId=${session?.user?.classId}`);
-        const data = await res.json();
+    setLoading(true);
+    fetch(`/api/assignments/list?classId=${session.user.classId}`)
+      .then((res) => res.json())
+      .then((data) => {
         setAssignments(data.assignments || []);
-      } catch (err) {
-        console.error("Error fetching assignments:", err);
-      }
-    };
-
-    fetchAssignments();
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [status, session]);
 
-  if (status === "loading") return <p>Loading your dashboard...</p>;
+  if (loading) return <p>Loading assignments...</p>;
 
   return (
     <div className="p-6">
@@ -57,7 +56,7 @@ export default function StudentDashboard() {
         {assignments.map((a) => (
           <li key={a._id}>
             <a href={a.url} target="_blank" rel="noreferrer">
-              {a.title || "Assignment Document"}
+              {a.filename || "Assignment Document"}
             </a>
           </li>
         ))}
