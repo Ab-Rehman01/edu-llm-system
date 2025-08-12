@@ -90,29 +90,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (err) {
           console.error('Form parse error:', err);
           reject(err);
-          }  else {
-             console.log('Fields:', fields);
-    console.log('Files:', files);
-    resolve({ fields, files });
-          }
+        } else {
+          console.log('Fields:', fields);
+          console.log('Files:', files);
+          resolve({ fields, files });
+        }
       });
     });
 
-    const classId = fields.classId;
-    const file = files.file;
+    const classId = Array.isArray(fields.classId) ? fields.classId[0] : fields.classId;
+    let file = files.file;
+
+    // Handle case if file is an array (take first file)
+    if (Array.isArray(file)) {
+      file = file[0];
+    }
 
     if (!file || !classId) {
       return res.status(400).json({ error: "File and classId required" });
     }
 
-    // Cloudinary upload expects a file path from formidable's file object
-    const result = await cloudinary.uploader.upload(file.filepath, {
+    const filePath = file.filepath || file.path;
+
+    if (!filePath) {
+      return res.status(400).json({ error: "Filepath missing" });
+    }
+
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(filePath, {
       folder: `assignments/${classId}`,
       resource_type: "auto",
     });
 
-    // Delete the temp file after upload
-    fs.unlinkSync(file.filepath);
+    // Delete temp file
+    fs.unlinkSync(filePath);
 
     return res.status(200).json({
       message: "Upload successful",
@@ -123,5 +134,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error("Upload error:", error);
     return res.status(500).json({ error: "Upload failed. Please try again." });
   }
-  
 }
