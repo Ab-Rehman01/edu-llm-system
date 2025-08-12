@@ -64,10 +64,13 @@
 
 
 // src/pages/api/assignments/upload.ts
+// src/pages/api/assignments/upload.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import formidable from "formidable";
 import fs from "fs";
 import cloudinary from "@/lib/cloudinary";
+import clientPromise from "@/lib/mongodb";  // add mongodb client import
+import { ObjectId } from "mongodb";
 
 export const config = {
   api: {
@@ -77,7 +80,7 @@ export const config = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('Headers:', req.headers);
-  
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -101,7 +104,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const classId = Array.isArray(fields.classId) ? fields.classId[0] : fields.classId;
     let file = files.file;
 
-    // Handle case if file is an array (take first file)
     if (Array.isArray(file)) {
       file = file[0];
     }
@@ -125,10 +127,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Delete temp file
     fs.unlinkSync(filePath);
 
+    // Save assignment info in MongoDB
+    const client = await clientPromise;
+    const db = client.db("education-system");
+
+    const assignmentDoc = {
+      classId: new ObjectId(classId),
+      url: result.secure_url,
+      public_id: result.public_id,
+      filename: file.originalFilename || file.newFilename || "unknown",
+      uploadedAt: new Date(),
+    };
+
+    await db.collection("assignments").insertOne(assignmentDoc);
+
     return res.status(200).json({
       message: "Upload successful",
       url: result.secure_url,
       public_id: result.public_id,
+      filename: assignmentDoc.filename,
     });
   } catch (error) {
     console.error("Upload error:", error);
