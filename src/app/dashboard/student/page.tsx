@@ -1,3 +1,5 @@
+//dashboard/student/page.tsx
+
 "use client";
 import RoleProtectedRoute from "@/components/RoleProtectedRoute";
 

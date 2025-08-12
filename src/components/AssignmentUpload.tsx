@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 
 interface AssignmentUploadProps {
   role: string;
+  classId: string;
 }
 
 interface ClassItem {
@@ -12,9 +13,9 @@ interface ClassItem {
   name: string;
 }
 
-export default function AssignmentUpload({ role }: AssignmentUploadProps) {
+export default function AssignmentUpload({ role, }: AssignmentUploadProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [classId, setClassId] = useState("");
+  const [selectedClassId, setselectedClassId] = useState("");
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
@@ -42,7 +43,7 @@ useEffect(() => {
 };
 
   const handleUpload = async () => {
-    if (!file || !classId) {
+    if (!file || !selectedClassId) {
       setError("Please select a class and choose a file.");
       return;
     }
@@ -52,7 +53,7 @@ useEffect(() => {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("classId", classId);
+    formData.append("classId", selectedClassId);
     formData.append("role", role);
 
     try {
@@ -83,8 +84,8 @@ useEffect(() => {
 
       {/* Class Select Dropdown */}
       <select
-        value={classId}
-        onChange={(e) => setClassId(e.target.value)}
+        value={selectedClassId}
+        onChange={(e) => setselectedClassId(e.target.value)}
         className="w-full p-2 border rounded mb-4"
       >
         <option value="">Select Class</option>
