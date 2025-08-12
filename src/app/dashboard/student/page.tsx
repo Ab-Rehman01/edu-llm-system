@@ -32,17 +32,31 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (status !== "authenticated") return; // ✅ Wait until session is loaded
-    if (!session?.user?.classId) return;
+    // Wait until session is authenticated
+    if (status === "loading") return;
+    if (status !== "authenticated") {
+      console.warn("User not authenticated");
+      return;
+    }
+    if (!session?.user?.classId) {
+      console.warn("No classId found in session");
+      return;
+    }
 
+    console.log("Fetching assignments for classId:", session.user.classId);
     setLoading(true);
+
     fetch(`/api/assignments/list?classId=${session.user.classId}`)
       .then((res) => res.json())
       .then((data) => {
+        console.log("Assignments API Response:", data);
         setAssignments(data.assignments || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error("Error fetching assignments:", err);
+        setLoading(false);
+      });
   }, [status, session]);
 
   if (loading) return <p>Loading assignments...</p>;
@@ -50,12 +64,17 @@ export default function StudentDashboard() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold">Student Dashboard</h1>
-      <h2>Assignments for your class</h2>
+      <h2 className="mb-4">Assignments for your class</h2>
       <ul>
         {assignments.length === 0 && <li>No assignments found.</li>}
         {assignments.map((a) => (
-          <li key={a._id}>
-            <a href={a.url} target="_blank" rel="noreferrer">
+          <li key={a._id} className="mb-2">
+            <a
+              href={a.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:underline"
+            >
               {a.filename || "Assignment Document"}
             </a>
           </li>
