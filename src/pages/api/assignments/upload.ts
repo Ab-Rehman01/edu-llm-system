@@ -76,6 +76,8 @@ export const config = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('Headers:', req.headers);
+  
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -85,8 +87,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { fields, files } = await new Promise<{ fields: any; files: any }>((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
+        if (err) {
+          console.error('Form parse error:', err);
+          reject(err);
+          }  else {
+             console.log('Fields:', fields);
+    console.log('Files:', files);
+    resolve({ fields, files });
+          }
       });
     });
 
