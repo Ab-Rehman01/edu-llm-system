@@ -16,6 +16,7 @@
 //   }
 // }
 // src/app/api/assignments/list/route.ts
+// src/app/api/assignments/list/route.ts
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
@@ -30,15 +31,20 @@ export async function GET(req: Request) {
 
     let query = {};
     if (classId) {
-      query = { classId: new ObjectId(classId) };
+      // Agar classId valid ObjectId hai, tab convert karo, warna string se query karo
+      if (ObjectId.isValid(classId)) {
+        query = { classId: new ObjectId(classId) };
+      } else {
+        query = { classId };
+      }
     }
 
     const assignments = await db.collection("assignments").find(query).toArray();
 
-    // Convert _id and classId to string for frontend use
+    // Convert _id and classId to string for frontend
     const formatted = assignments.map((a) => ({
       _id: a._id.toString(),
-      classId: a.classId.toString(),
+      classId: typeof a.classId === "string" ? a.classId : a.classId.toString(),
       url: a.url,
       public_id: a.public_id,
       filename: a.filename,
