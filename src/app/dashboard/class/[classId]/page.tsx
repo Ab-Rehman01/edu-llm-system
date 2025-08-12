@@ -112,14 +112,21 @@ interface Assignment {
   classId: string;
 }
 
+interface ClassItem {
+  _id: string;
+  name: string;
+}
+
 export default function ClassDashboard() {
   const params = useParams();
-  const classId = params?.classId || "";
+  const classId = params?.classId as string;
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [className, setClassName] = useState<string>("");
 
+  // Fetch assignments
   useEffect(() => {
     if (!classId) return;
 
@@ -146,12 +153,36 @@ export default function ClassDashboard() {
     fetchAssignments();
   }, [classId]);
 
+  // Fetch class name
+  useEffect(() => {
+    if (!classId) return;
+
+    async function fetchClassName() {
+      try {
+        const res = await fetch(`/api/classes/list`);
+        const data = await res.json();
+
+        console.log("Classes from API:", data.classes);
+        const cls = data.classes.find((c: ClassItem) => c._id === classId);
+        if (cls) {
+          setClassName(cls.name);
+        }
+      } catch (err) {
+        console.error("Error fetching class name:", err);
+      }
+    }
+
+    fetchClassName();
+  }, [classId]);
+
   if (loading) return <p>Loading assignments...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Assignments for Class: {classId}</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        Assignments for Class: {className || `Class ID: ${classId}`}
+      </h1>
 
       {assignments.length === 0 && <p>No assignments found for this class.</p>}
 
@@ -170,7 +201,9 @@ export default function ClassDashboard() {
 
       {selectedAssignment && (
         <div className="mt-6">
-          <h2 className="text-xl font-semibold mb-2">Viewing: {selectedAssignment.fileName}</h2>
+          <h2 className="text-xl font-semibold mb-2">
+            Viewing: {selectedAssignment.fileName}
+          </h2>
 
           {selectedAssignment.url.endsWith(".pdf") && (
             <iframe
@@ -201,7 +234,11 @@ export default function ClassDashboard() {
           )}
 
           {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
-            <a href={selectedAssignment.url} target="_blank" rel="noopener noreferrer">
+            <a
+              href={selectedAssignment.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Download File
             </a>
           )}
