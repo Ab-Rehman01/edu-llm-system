@@ -68,20 +68,24 @@ export default function StudentDashboard() {
       <h2 className="mb-4">Assignments for your class</h2>
       <ul>
   {assignments.length === 0 && <li>No assignments found.</li>}
-  {assignments.map((a) => (
-    <li key={a._id} className="mb-2 flex items-center gap-4 border-b pb-2">
-      <div>
-        <p className="font-semibold text-lg">
-          {a.filename || "Untitled Assignment"}
-        </p>
-        <p className="text-sm text-gray-500">
-  {a.uploadedAt
-    ? new Date(a.uploadedAt).toLocaleDateString()
-    : "No date available"}
-</p>
-      </div>
-    </li>
-  ))}
+{assignments.map((a) => (
+  <li key={a._id} className="mb-2">
+    <a
+      href={a.url} // ✅ Cloudinary ya file ka direct URL
+      target="_blank"
+      rel="noreferrer"
+      className="text-blue-600 hover:underline"
+    >
+      {a.subject || a.filename || "Assignment"} 
+      {a.uploadedAt && (
+        <span className="text-gray-500 text-sm ml-2">
+          ({new Date(a.uploadedAt).toLocaleDateString()})
+        </span>
+      )}
+    </a>
+  </li>
+))}
+
 </ul>
     </div>
   );
