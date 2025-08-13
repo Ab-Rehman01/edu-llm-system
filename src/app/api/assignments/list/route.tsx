@@ -16,9 +16,9 @@
 //   }
 // }
 // src/app/api/assignments/list/route.ts
-// src/app/api/assignments/list/route.ts
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
 export async function GET(req: Request) {
   try {
@@ -30,7 +30,18 @@ export async function GET(req: Request) {
 
     let query: any = {};
     if (classId) {
-      query = { classId: classId.toString() }; // ✅ Always compare as string
+      // ✅ Match both ObjectId and string values in DB
+      try {
+        query = {
+          $or: [
+            { classId: classId.toString() },
+            { classId: new ObjectId(classId) }
+          ]
+        };
+      } catch {
+        // Agar classId invalid ObjectId ho, to sirf string compare kare
+        query = { classId: classId.toString() };
+      }
     }
 
     const assignments = await db.collection("assignments").find(query).toArray();
