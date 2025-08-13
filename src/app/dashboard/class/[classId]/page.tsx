@@ -128,7 +128,6 @@ export default function ClassDashboard() {
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [className, setClassName] = useState<string>("");
 
-  // Fetch assignments
   useEffect(() => {
     if (!classId) return;
 
@@ -153,7 +152,6 @@ export default function ClassDashboard() {
     fetchAssignments();
   }, [classId]);
 
-  // Fetch class name
   useEffect(() => {
     if (!classId) return;
 
@@ -174,6 +172,13 @@ export default function ClassDashboard() {
   if (loading) return <p>Loading assignments...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
 
+  const getFileIcon = (url: string) => {
+    if (url.endsWith(".pdf")) return "📄";
+    if (url.match(/\.(jpg|jpeg|png|gif)$/)) return "🖼️";
+    if (url.match(/\.(mp4|webm|ogg)$/)) return "🎬";
+    return "📎";
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">
@@ -182,24 +187,28 @@ export default function ClassDashboard() {
 
       {assignments.length === 0 && <p>No assignments found.</p>}
 
-      <ul>
-        {assignments.map((assignment) => (
-          <li key={assignment._id} className="mb-2">
-            <button
-              onClick={() => setSelectedAssignment(assignment)}
-              className="text-blue-600 underline"
-            >
-              {assignment.fileName || "View Assignment"}
-            </button>
-            <span className="ml-2 text-gray-500">
-              {new Date(assignment.uploadedAt).toLocaleString()}
-            </span>
+      <ul className="space-y-2">
+        {assignments.map(a => (
+          <li key={a._id} className="border p-2 rounded flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getFileIcon(a.url)}</span>
+              <div>
+                <strong>Subject:</strong> {a.subject} <br />
+                <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
+                <button
+                  onClick={() => setSelectedAssignment(a)}
+                  className="text-blue-600 hover:underline mt-1"
+                >
+                  {a.fileName || "View Assignment"}
+                </button>
+              </div>
+            </div>
           </li>
         ))}
       </ul>
 
       {selectedAssignment && (
-        <div className="mt-6">
+        <div className="mt-6 border-t pt-4">
           <h2 className="text-xl font-semibold mb-2">
             Viewing: {selectedAssignment.fileName}
           </h2>
@@ -216,10 +225,7 @@ export default function ClassDashboard() {
             />
           )}
 
-          {(selectedAssignment.url.endsWith(".jpg") ||
-            selectedAssignment.url.endsWith(".jpeg") ||
-            selectedAssignment.url.endsWith(".png") ||
-            selectedAssignment.url.endsWith(".gif")) && (
+          {selectedAssignment.url.match(/\.(jpg|jpeg|png|gif)$/) && (
             <img
               src={selectedAssignment.url}
               alt={selectedAssignment.fileName}
@@ -227,9 +233,7 @@ export default function ClassDashboard() {
             />
           )}
 
-          {(selectedAssignment.url.endsWith(".mp4") ||
-            selectedAssignment.url.endsWith(".webm") ||
-            selectedAssignment.url.endsWith(".ogg")) && (
+          {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
             <video controls className="w-full max-h-[600px] border">
               <source src={selectedAssignment.url} type="video/mp4" />
               Your browser does not support the video tag.

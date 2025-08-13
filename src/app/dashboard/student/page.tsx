@@ -49,6 +49,13 @@ export default function StudentDashboard() {
 
   if (loading) return <p>Loading assignments...</p>;
 
+  const getFileIcon = (url: string) => {
+    if (url.endsWith(".pdf")) return "📄";
+    if (url.match(/\.(jpg|jpeg|png|gif)$/)) return "🖼️";
+    if (url.match(/\.(mp4|webm|ogg)$/)) return "🎬";
+    return "📎";
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Student Dashboard</h1>
@@ -56,23 +63,28 @@ export default function StudentDashboard() {
 
       {assignments.length === 0 && <p>No assignments found.</p>}
 
-      <ul>
+      <ul className="space-y-3">
         {assignments.map(a => (
-          <li key={a._id} className="mb-3 border-b pb-2">
-            <strong>Subject:</strong> {a.subject} <br />
-            <strong>Uploaded At:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
-            <button
-              onClick={() => setSelectedAssignment(a)}
-              className="text-blue-600 hover:underline"
-            >
-              {a.filename || "View Assignment"}
-            </button>
+          <li key={a._id} className="border p-3 rounded flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getFileIcon(a.url)}</span>
+              <div>
+                <strong>Subject:</strong> {a.subject} <br />
+                <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
+                <button
+                  onClick={() => setSelectedAssignment(a)}
+                  className="text-blue-600 hover:underline mt-1"
+                >
+                  {a.filename || "View Assignment"}
+                </button>
+              </div>
+            </div>
           </li>
         ))}
       </ul>
 
       {selectedAssignment && (
-        <div className="mt-6">
+        <div className="mt-6 border-t pt-4">
           <h2 className="text-xl font-semibold mb-2">
             Viewing: {selectedAssignment.filename}
           </h2>
@@ -89,10 +101,7 @@ export default function StudentDashboard() {
             />
           )}
 
-          {(selectedAssignment.url.endsWith(".jpg") ||
-            selectedAssignment.url.endsWith(".jpeg") ||
-            selectedAssignment.url.endsWith(".png") ||
-            selectedAssignment.url.endsWith(".gif")) && (
+          {selectedAssignment.url.match(/\.(jpg|jpeg|png|gif)$/) && (
             <img
               src={selectedAssignment.url}
               alt={selectedAssignment.filename}
@@ -100,9 +109,7 @@ export default function StudentDashboard() {
             />
           )}
 
-          {(selectedAssignment.url.endsWith(".mp4") ||
-            selectedAssignment.url.endsWith(".webm") ||
-            selectedAssignment.url.endsWith(".ogg")) && (
+          {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
             <video controls className="w-full max-h-[600px] border">
               <source src={selectedAssignment.url} type="video/mp4" />
               Your browser does not support the video tag.
@@ -112,7 +119,12 @@ export default function StudentDashboard() {
           {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
             <p>
               File type not supported for inline view.{" "}
-              <a href={selectedAssignment.url} target="_blank" rel="noopener noreferrer">
+              <a
+                href={selectedAssignment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
                 Download
               </a>
             </p>
