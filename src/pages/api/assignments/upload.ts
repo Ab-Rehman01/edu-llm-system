@@ -152,6 +152,9 @@
 //     return res.status(500).json({ error: "Upload failed. Please try again." });
 //   }
 // }
+
+
+// src/pages/api/assignments/upload.ts
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 
@@ -160,28 +163,33 @@ export async function POST(req: Request) {
     const client = await clientPromise;
     const db = client.db("education-system");
 
-    const body = await req.json();
-    let { classId, url, public_id, filename, subject } = body; // subject added
+    const body = await req.json().catch(() => null);
 
-    // classId ko hamesha string me convert
+    if (!body) {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+
+    let { classId, url, public_id, filename, subject } = body;
+
+    // classId ko string banado
     if (classId) {
       classId = classId.toString();
     }
 
     const newAssignment = {
-      classId,         // string form
-      subject: subject || "Untitled Subject", // default agar empty ho
+      classId,
+      subject: subject?.trim() || "Untitled Subject",
       url,
       public_id,
       filename,
-      uploadedAt: new Date()
+      uploadedAt: new Date(),
     };
 
     await db.collection("assignments").insertOne(newAssignment);
 
-    return NextResponse.json({ message: "Assignment uploaded successfully" });
+    return NextResponse.json({ success: true, message: "Assignment uploaded successfully" });
   } catch (error) {
     console.error("Error uploading assignment:", error);
-    return NextResponse.json({ error: "Failed to upload assignment" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Failed to upload assignment" }, { status: 500 });
   }
 }
