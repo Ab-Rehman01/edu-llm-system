@@ -100,8 +100,8 @@
 //   );
 // }
 
+//dashboard/class/[classid]/page.tsx
 "use client";
-
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
@@ -110,6 +110,8 @@ interface Assignment {
   url: string;
   fileName?: string;
   classId: string;
+  subject: string;
+  uploadedAt: string;
 }
 
 interface ClassItem {
@@ -138,11 +140,9 @@ export default function ClassDashboard() {
         const res = await fetch(`/api/assignments/list?classId=${classId}`);
         const data = await res.json();
 
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to fetch assignments");
-        }
+        if (!res.ok) throw new Error(data.error || "Failed to fetch assignments");
 
-        setAssignments(data.assignments || data);
+        setAssignments(data.assignments || []);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -161,14 +161,10 @@ export default function ClassDashboard() {
       try {
         const res = await fetch(`/api/classes/list`);
         const data = await res.json();
-
-        console.log("Classes from API:", data.classes);
         const cls = data.classes.find((c: ClassItem) => c._id === classId);
-        if (cls) {
-          setClassName(cls.name);
-        }
+        if (cls) setClassName(cls.name);
       } catch (err) {
-        console.error("Error fetching class name:", err);
+        console.error(err);
       }
     }
 
@@ -184,7 +180,7 @@ export default function ClassDashboard() {
         Assignments for Class: {className || `Class ID: ${classId}`}
       </h1>
 
-      {assignments.length === 0 && <p>No assignments found for this class.</p>}
+      {assignments.length === 0 && <p>No assignments found.</p>}
 
       <ul>
         {assignments.map((assignment) => (
@@ -195,6 +191,9 @@ export default function ClassDashboard() {
             >
               {assignment.fileName || "View Assignment"}
             </button>
+            <span className="ml-2 text-gray-500">
+              {new Date(assignment.uploadedAt).toLocaleString()}
+            </span>
           </li>
         ))}
       </ul>
@@ -204,6 +203,10 @@ export default function ClassDashboard() {
           <h2 className="text-xl font-semibold mb-2">
             Viewing: {selectedAssignment.fileName}
           </h2>
+          <p className="text-gray-600 mb-2">
+            <strong>Uploaded At:</strong>{" "}
+            {new Date(selectedAssignment.uploadedAt).toLocaleString()}
+          </p>
 
           {selectedAssignment.url.endsWith(".pdf") && (
             <iframe
@@ -234,13 +237,17 @@ export default function ClassDashboard() {
           )}
 
           {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
-            <a
-              href={selectedAssignment.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Download File
-            </a>
+            <p>
+              File type not supported for inline view.{" "}
+              <a
+                href={selectedAssignment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Download
+              </a>
+            </p>
           )}
         </div>
       )}
