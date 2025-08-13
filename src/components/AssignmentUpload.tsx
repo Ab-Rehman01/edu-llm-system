@@ -2,11 +2,6 @@
 
 import { useState, useEffect } from "react";
 
-interface AssignmentUploadProps {
-  role: string;
-  classId?: string; // optional prop if admin wants to set from outside
-}
-
 interface ClassItem {
   _id: string;
   name: string;
@@ -15,26 +10,31 @@ interface ClassItem {
 interface Assignment {
   _id: string;
   url: string;
+  filename: string;
   subject: string;
-  classId: string;
-  createdAt: string;
+  uploadedAt: string;
+}
+
+interface AssignmentUploadProps {
+  role?: string;
+  classId?: string;
 }
 
 export default function AssignmentUpload({ role, classId: propClassId }: AssignmentUploadProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [selectedClassId, setSelectedClassId] = useState(propClassId || "");
   const [subject, setSubject] = useState("");
+  const [classId, setClassId] = useState(propClassId || "");
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Assign prop classId to selectedClassId if it changes
+  // If propClassId changes, update classId state
   useEffect(() => {
-    if (propClassId) setSelectedClassId(propClassId);
+    if (propClassId) setClassId(propClassId);
   }, [propClassId]);
 
-  // Fetch classes
+  // Fetch list of classes from API
   useEffect(() => {
     async function fetchClasses() {
       try {
@@ -48,9 +48,25 @@ export default function AssignmentUpload({ role, classId: propClassId }: Assignm
     fetchClasses();
   }, []);
 
-  // Upload handler
+  // Fetch assignments for selected class
+  useEffect(() => {
+    if (!classId) return;
+
+    async function fetchAssignments() {
+      try {
+        const res = await fetch(`/api/assignments/list?classId=${classId}`);
+        const data = await res.json();
+        setAssignments(data.assignments || []);
+      } catch (err) {
+        console.error("Error fetching assignments:", err);
+      }
+    }
+
+    fetchAssignments();
+  }, [classId]);
+
   const handleUpload = async () => {
-    if (!file || !selectedClassId || !subject.trim()) {
+    if (!file || !classId || !subject.trim()) {
       setError("Please select a class, enter a subject, and choose a file.");
       return;
     }
@@ -58,11 +74,12 @@ export default function AssignmentUpload({ role, classId: propClassId }: Assignm
     setUploading(true);
     setError(null);
 
+    // Prepare form data for upload
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("classId", selectedClassId);
+    formData.append("classId", classId);
     formData.append("subject", subject.trim());
-    formData.append("role", role);
+    formData.append("role", role || "");
 
     try {
       const res = await fetch("/api/assignments/upload", {
@@ -74,10 +91,13 @@ export default function AssignmentUpload({ role, classId: propClassId }: Assignm
 
       if (!res.ok) throw new Error(data.error || "Upload failed");
 
-      setUploadedUrl(data.url);
+      // Clear input and reload assignments list after upload
       setSubject("");
       setFile(null);
-      // You might want to refresh assignment list here if showing after upload
+      // Refresh assignments
+      const refreshRes = await fetch(`/api/assignments/list?classId=${classId}`);
+      const refreshData = await refreshRes.json();
+      setAssignments(refreshData.assignments || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -92,18 +112,20 @@ export default function AssignmentUpload({ role, classId: propClassId }: Assignm
       </h2>
 
       {/* Class Select Dropdown */}
-      <select
-        value={selectedClassId}
-        onChange={(e) => setSelectedClassId(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      >
-        <option value="">Select Class</option>
-        {classes.map((cls) => (
-          <option key={cls._id} value={cls._id}>
-            {cls.name}
-          </option>
-        ))}
-      </select>
+      {!propClassId && (
+        <select
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          className="w-full p-2 border rounded mb-4"
+        >
+          <option value="">Select Class</option>
+          {classes.map((cls) => (
+            <option key={cls._id} value={cls._id}>
+              {cls.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       {/* Subject Input */}
       <input
@@ -135,24 +157,31 @@ export default function AssignmentUpload({ role, classId: propClassId }: Assignm
       {/* Error Message */}
       {error && <p className="text-red-500 mt-3">{error}</p>}
 
-      {/* Uploaded File Link */}
-      {uploadedUrl && (
-        <div className="mt-4">
-          <p className="text-green-600">Upload successful!</p>
-          <a
-            href={uploadedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline"
-          >
-            View file
-          </a>
-        </div>
-      )}
+      {/* Assignments List */}
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold mb-2">Assignments List</h3>
+        {assignments.length === 0 && <p>No assignments found.</p>}
+        <ul>
+          {assignments.map((a) => (
+            <li key={a._id} className="mb-2">
+              <a
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                {a.subject} - {a.filename}
+              </a>{" "}
+              <span className="text-gray-500 text-sm">
+                ({new Date(a.uploadedAt).toLocaleDateString()})
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
-
 // "use client";
 
 // import { useState } from "react";

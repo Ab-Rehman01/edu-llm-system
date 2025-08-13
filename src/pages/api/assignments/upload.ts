@@ -155,54 +155,34 @@
 
 
 // src/pages/api/assignments/upload.ts
-import { NextApiRequest, NextApiResponse } from "next";
-import formidable from "formidable";
+import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 
-export const config = {
-  api: {
-    bodyParser: false, // Important: disable Next.js default body parsing
-  },
-};
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { classId, url, filename, subject } = body;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    if (!classId || !url || !filename || !subject) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db("education-system");
+
+    const newAssignment = {
+      classId: classId.toString(),
+      url,
+      filename,
+      subject,
+      uploadedAt: new Date(),
+    };
+
+    await db.collection("assignments").insertOne(newAssignment);
+
+    return NextResponse.json({ message: "Assignment uploaded successfully" });
+  } catch (error) {
+    console.error("Error uploading assignment:", error);
+    return NextResponse.json({ error: "Failed to upload assignment" }, { status: 500 });
   }
-
-  const form = formidable();
-
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error("Form parse error:", err);
-      return res.status(500).json({ error: "Error parsing the form" });
-    }
-
-    try {
-      const classId = fields.classId as string;
-      const subject = (fields.subject as string) || "Untitled Subject";
-      const public_id = fields.public_id as string;
-      const url = fields.url as string;
-      const filename = fields.filename as string;
-
-      const client = await clientPromise;
-      const db = client.db("education-system");
-
-      const newAssignment = {
-        classId,
-        subject,
-        url,
-        public_id,
-        filename,
-        uploadedAt: new Date(),
-      };
-
-      await db.collection("assignments").insertOne(newAssignment);
-
-      return res.status(200).json({ message: "Assignment uploaded successfully" });
-    } catch (error) {
-      console.error("Error uploading assignment:", error);
-      return res.status(500).json({ error: "Failed to upload assignment" });
-    }
-  });
 }

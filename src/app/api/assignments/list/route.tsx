@@ -27,16 +27,16 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const classId = url.searchParams.get("classId");
 
-    const query = classId ? { classId: classId.toString() } : {};
+    const query = classId ? { classId } : {};
 
     const assignments = await db.collection("assignments").find(query).toArray();
 
     const formatted = assignments.map(a => ({
       _id: a._id.toString(),
-      classId: a.classId?.toString(),
+      classId: a.classId,
       url: a.url,
       filename: a.filename,
-      subject: a.subject || "No Subject",
+      subject: a.subject,
       uploadedAt: a.uploadedAt,
     }));
 
