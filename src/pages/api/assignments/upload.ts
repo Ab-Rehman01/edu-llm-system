@@ -155,34 +155,33 @@
 
 
 // src/pages/api/assignments/upload.ts
-import { NextResponse } from "next/server";
+import type { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@/lib/mongodb";
 
-export async function POST(req: Request) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
   try {
-    const body = await req.json();
-    const { classId, url, filename, subject } = body;
-
-    if (!classId || !url || !filename || !subject) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
     const client = await clientPromise;
     const db = client.db("education-system");
 
+    const { classId, url, public_id, filename, subject } = req.body;
+
     const newAssignment = {
-      classId: classId.toString(),
+      classId: classId?.toString(),
       url,
+      public_id,
       filename,
-      subject,
+      subject: subject || "Untitled Subject",
       uploadedAt: new Date(),
     };
 
     await db.collection("assignments").insertOne(newAssignment);
 
-    return NextResponse.json({ message: "Assignment uploaded successfully" });
+    return res.status(200).json({ message: "Assignment uploaded successfully" });
   } catch (error) {
     console.error("Error uploading assignment:", error);
-    return NextResponse.json({ error: "Failed to upload assignment" }, { status: 500 });
+    return res.status(500).json({ error: "Failed to upload assignment" });
   }
 }
