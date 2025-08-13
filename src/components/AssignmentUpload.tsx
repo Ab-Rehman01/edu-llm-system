@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 interface ClassItem {
   _id: string;
@@ -13,19 +13,22 @@ interface AssignmentUploadProps {
 }
 
 export default function AssignmentUpload({ role, classId: propClassId }: AssignmentUploadProps) {
-  const [classId, setClassId] = useState(propClassId || "");
+  const [classId, setClassId] = useState<string>(propClassId || "");
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const initialized = useRef(false);
+  const [subject, setSubject] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successUrl, setSuccessUrl] = useState<string | null>(null);
 
-  // Only set classId from prop once
+  // Update classId if prop changes
   useEffect(() => {
-    if (propClassId && !initialized.current) {
+    if (propClassId) {
       setClassId(propClassId);
-      initialized.current = true;
     }
   }, [propClassId]);
 
-  // Fetch classes
+  // Fetch classes once
   useEffect(() => {
     async function fetchClasses() {
       try {
@@ -39,28 +42,106 @@ export default function AssignmentUpload({ role, classId: propClassId }: Assignm
     fetchClasses();
   }, []);
 
+  async function handleUpload() {
+    setError(null);
+    setSuccessUrl(null);
+
+    if (!classId) {
+      setError("Please select a class.");
+      return;
+    }
+    if (!subject.trim()) {
+      setError("Please enter a subject.");
+      return;
+    }
+    if (!file) {
+      setError("Please select a file to upload.");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Prepare form data
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("classId", classId);
+      formData.append("subject", subject.trim());
+      formData.append("role", role);
+
+      // POST to your upload API route
+      const res = await fetch("/api/assignments/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setSuccessUrl(data.url || null);
+      setSubject("");
+      setFile(null);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
-    <div>
-      {/* Show dropdown only if propClassId NOT provided */}
-      {!propClassId && (
-        <select
-          value={classId}
-          onChange={(e) => setClassId(e.target.value)}
-          className="w-full p-2 border rounded mb-4"
-        >
-          <option value="">Select Class</option>
-          {classes.map((cls) => (
-            <option key={cls._id} value={cls._id}>
-              {cls.name}
-            </option>
-          ))}
-        </select>
+    <div className="max-w-md mx-auto p-4 border rounded shadow">
+      <h2 className="text-xl font-semibold mb-4">Upload Assignment {role && `(${role})`}</h2>
+
+      <select
+        value={classId}
+        onChange={(e) => setClassId(e.target.value)}
+        className="w-full p-2 border rounded mb-4"
+      >
+        <option value="">Select Class</option>
+        {classes.map((cls) => (
+          <option key={cls._id} value={cls._id}>
+            {cls.name}
+          </option>
+        ))}
+      </select>
+
+      <input
+        type="text"
+        placeholder="Enter Subject"
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        className="w-full p-2 border rounded mb-4"
+      />
+
+      <input
+        type="file"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
+        }}
+        className="w-full mb-4"
+      />
+
+      <button
+        onClick={handleUpload}
+        disabled={uploading}
+        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+      >
+        {uploading ? "Uploading..." : "Upload"}
+      </button>
+
+      {error && <p className="mt-3 text-red-600">{error}</p>}
+
+      {successUrl && (
+        <p className="mt-3 text-green-600">
+          Upload successful!{" "}
+          <a href={successUrl} target="_blank" rel="noopener noreferrer" className="underline">
+            View file
+          </a>
+        </p>
       )}
-
-      {/* Show selected class id for debug */}
-      <p>Selected Class ID: {classId}</p>
-
-      {/* Rest of your component like subject input, file upload, etc. */}
     </div>
   );
 }
