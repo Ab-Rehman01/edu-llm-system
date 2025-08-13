@@ -102,16 +102,17 @@
 
 //dashboard/class/[classid]/page.tsx
 "use client";
+
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 interface Assignment {
   _id: string;
-  url: string;
+  url?: string;
   fileName?: string;
   classId: string;
-  subject: string;
-  uploadedAt: string;
+  subject?: string;
+  uploadedAt?: string;
 }
 
 interface ClassItem {
@@ -128,6 +129,7 @@ export default function ClassDashboard() {
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [className, setClassName] = useState<string>("");
 
+  // Fetch assignments
   useEffect(() => {
     if (!classId) return;
 
@@ -139,9 +141,12 @@ export default function ClassDashboard() {
         const res = await fetch(`/api/assignments/list?classId=${classId}`);
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error || "Failed to fetch assignments");
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to fetch assignments");
+        }
 
-        setAssignments(data.assignments || []);
+        // Ensure assignments array exists
+        setAssignments(Array.isArray(data.assignments) ? data.assignments : []);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -152,6 +157,7 @@ export default function ClassDashboard() {
     fetchAssignments();
   }, [classId]);
 
+  // Fetch class name
   useEffect(() => {
     if (!classId) return;
 
@@ -159,10 +165,16 @@ export default function ClassDashboard() {
       try {
         const res = await fetch(`/api/classes/list`);
         const data = await res.json();
-        const cls = data.classes.find((c: ClassItem) => c._id === classId);
-        if (cls) setClassName(cls.name);
+
+        const cls = Array.isArray(data.classes)
+          ? data.classes.find((c: ClassItem) => c._id === classId)
+          : null;
+
+        if (cls) {
+          setClassName(cls.name);
+        }
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching class name:", err);
       }
     }
 
@@ -172,87 +184,84 @@ export default function ClassDashboard() {
   if (loading) return <p>Loading assignments...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
 
-  const getFileIcon = (url: string) => {
-    if (url.endsWith(".pdf")) return "📄";
-    if (url.match(/\.(jpg|jpeg|png|gif)$/)) return "🖼️";
-    if (url.match(/\.(mp4|webm|ogg)$/)) return "🎬";
-    return "📎";
-  };
-
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">
         Assignments for Class: {className || `Class ID: ${classId}`}
       </h1>
 
-      {assignments.length === 0 && <p>No assignments found.</p>}
+      {assignments.length === 0 && <p>No assignments found for this class.</p>}
 
-      <ul className="space-y-2">
-        {assignments.map(a => (
-          <li key={a._id} className="border p-2 rounded flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{getFileIcon(a.url)}</span>
-              <div>
-                <strong>Subject:</strong> {a.subject} <br />
-                <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
-                <button
-                  onClick={() => setSelectedAssignment(a)}
-                  className="text-blue-600 hover:underline mt-1"
-                >
-                  {a.fileName || "View Assignment"}
-                </button>
-              </div>
-            </div>
+      <ul>
+        {assignments.map((assignment) => (
+          <li key={assignment._id} className="mb-2">
+            <button
+              onClick={() => setSelectedAssignment(assignment)}
+              className="text-blue-600 underline"
+            >
+              {assignment.fileName || assignment.subject || "View Assignment"}
+            </button>
           </li>
         ))}
       </ul>
 
       {selectedAssignment && (
-        <div className="mt-6 border-t pt-4">
+        <div className="mt-6">
           <h2 className="text-xl font-semibold mb-2">
-            Viewing: {selectedAssignment.fileName}
+            Viewing: {selectedAssignment.fileName || selectedAssignment.subject}
           </h2>
-          <p className="text-gray-600 mb-2">
+
+          <p>
+            <strong>Subject:</strong>{" "}
+            {selectedAssignment.subject || "N/A"} <br />
             <strong>Uploaded At:</strong>{" "}
-            {new Date(selectedAssignment.uploadedAt).toLocaleString()}
+            {selectedAssignment.uploadedAt
+              ? new Date(selectedAssignment.uploadedAt).toLocaleString()
+              : "N/A"}
           </p>
 
-          {selectedAssignment.url.endsWith(".pdf") && (
+          {selectedAssignment.url && selectedAssignment.url.endsWith(".pdf") && (
             <iframe
               src={selectedAssignment.url}
               className="w-full h-[600px] border"
-              title={selectedAssignment.fileName}
+              title={selectedAssignment.fileName || selectedAssignment.subject}
             />
           )}
 
-          {selectedAssignment.url.match(/\.(jpg|jpeg|png|gif)$/) && (
-            <img
-              src={selectedAssignment.url}
-              alt={selectedAssignment.fileName}
-              className="max-w-full h-auto border"
-            />
-          )}
+          {selectedAssignment.url &&
+            (selectedAssignment.url.endsWith(".jpg") ||
+              selectedAssignment.url.endsWith(".jpeg") ||
+              selectedAssignment.url.endsWith(".png") ||
+              selectedAssignment.url.endsWith(".gif")) && (
+              <img
+                src={selectedAssignment.url}
+                alt={selectedAssignment.fileName || selectedAssignment.subject}
+                className="max-w-full h-auto border"
+              />
+            )}
 
-          {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
-            <video controls className="w-full max-h-[600px] border">
-              <source src={selectedAssignment.url} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          )}
+          {selectedAssignment.url &&
+            (selectedAssignment.url.endsWith(".mp4") ||
+              selectedAssignment.url.endsWith(".webm") ||
+              selectedAssignment.url.endsWith(".ogg")) && (
+              <video controls className="w-full max-h-[600px] border">
+                <source src={selectedAssignment.url} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            )}
 
-          {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
-            <p>
-              File type not supported for inline view.{" "}
+          {selectedAssignment.url &&
+            !selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
               <a
                 href={selectedAssignment.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
               >
-                Download
+                Download File
               </a>
-            </p>
-          )}
+            )}
+
+          {!selectedAssignment.url && <p>No file URL provided.</p>}
         </div>
       )}
     </div>
