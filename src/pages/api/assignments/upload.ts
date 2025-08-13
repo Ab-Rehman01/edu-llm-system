@@ -153,35 +153,79 @@
 //   }
 // }
 
-
-// src/pages/api/assignments/upload.ts
 import type { NextApiRequest, NextApiResponse } from "next";
+import formidable, { File } from "formidable";
+import { v2 as cloudinary } from "cloudinary";
 import clientPromise from "@/lib/mongodb";
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
-  try {
-    const client = await clientPromise;
-    const db = client.db("education-system");
 
-    const { classId, url, public_id, filename, subject } = req.body;
+  const form = formidable();
 
-    const newAssignment = {
-      classId: classId?.toString(),
-      url,
-      public_id,
-      filename,
-      subject: subject || "Untitled Subject",
-      uploadedAt: new Date(),
-    };
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error("Form parse error:", err);
+      return res.status(500).json({ error: "Form parse failed" });
+    }
 
-    await db.collection("assignments").insertOne(newAssignment);
+    try {
+      const classId = fields.classId?.toString() || null;
+      const subject = fields.subject?.toString() || "Untitled Subject";
 
-    return res.status(200).json({ message: "Assignment uploaded successfully" });
-  } catch (error) {
-    console.error("Error uploading assignment:", error);
-    return res.status(500).json({ error: "Failed to upload assignment" });
-  }
+      // Explicitly type file as File or File[]
+      let file = files.file as File | File[] | undefined;
+
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      if (Array.isArray(file)) {
+        file = file[0];
+      }
+
+      const filePath = file.filepath || (file as any).path;
+
+      if (!filePath) {
+        return res.status(400).json({ error: "File path not found" });
+      }
+
+      const uploadResult = await cloudinary.uploader.upload(filePath, {
+        folder: `assignments/${classId}`,
+      });
+
+      const client = await clientPromise;
+      const db = client.db("education-system");
+
+      const newAssignment = {
+        classId,
+        subject,
+        url: uploadResult.secure_url,
+        public_id: uploadResult.public_id,
+        filename: uploadResult.original_filename,
+        uploadedAt: new Date(),
+      };
+
+      await db.collection("assignments").insertOne(newAssignment);
+
+      return res.status(200).json({ message: "Upload successful", url: uploadResult.secure_url });
+    } catch (uploadError) {
+      console.error("Upload error:", uploadError);
+      return res.status(500).json({ error: "Upload failed" });
+    }
+  });
 }
