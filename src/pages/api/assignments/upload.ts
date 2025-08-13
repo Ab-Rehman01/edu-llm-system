@@ -152,7 +152,6 @@
 //     return res.status(500).json({ error: "Upload failed. Please try again." });
 //   }
 // }
-
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 
@@ -162,7 +161,7 @@ export async function POST(req: Request) {
     const db = client.db("education-system");
 
     const body = await req.json();
-    let { classId, url, public_id, filename } = body;
+    let { classId, url, public_id, filename, subject } = body; // subject added
 
     // classId ko hamesha string me convert
     if (classId) {
@@ -171,6 +170,7 @@ export async function POST(req: Request) {
 
     const newAssignment = {
       classId,         // string form
+      subject: subject || "Untitled Subject", // default agar empty ho
       url,
       public_id,
       filename,
