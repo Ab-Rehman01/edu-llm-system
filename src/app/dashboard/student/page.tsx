@@ -24,8 +24,9 @@ type Assignment = {
   url: string;
   classId: string;
   filename?: string;
+  uploadedAt?: string; // ✅ Added
+  subject?: string;    // ✅ Added (agar tum subject show karna chahte ho)
 };
-
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -66,20 +67,22 @@ export default function StudentDashboard() {
       <h1 className="text-3xl font-bold">Student Dashboard</h1>
       <h2 className="mb-4">Assignments for your class</h2>
       <ul>
-        {assignments.length === 0 && <li>No assignments found.</li>}
-        {assignments.map((a) => (
-          <li key={a._id} className="mb-2">
-            <a
-              href={a.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              {a.filename || "Assignment Document"}
-            </a>
-          </li>
-        ))}
-      </ul>
+  {assignments.length === 0 && <li>No assignments found.</li>}
+  {assignments.map((a) => (
+    <li key={a._id} className="mb-2 flex items-center gap-4 border-b pb-2">
+      <div>
+        <p className="font-semibold text-lg">
+          {a.filename || "Untitled Assignment"}
+        </p>
+        <p className="text-sm text-gray-500">
+  {a.uploadedAt
+    ? new Date(a.uploadedAt).toLocaleDateString()
+    : "No date available"}
+</p>
+      </div>
+    </li>
+  ))}
+</ul>
     </div>
   );
 }

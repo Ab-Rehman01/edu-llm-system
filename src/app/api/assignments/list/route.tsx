@@ -46,14 +46,14 @@ export async function GET(req: Request) {
 
     const assignments = await db.collection("assignments").find(query).toArray();
 
-    const formatted = assignments.map((a) => ({
-      _id: a._id.toString(),
-      classId: a.classId?.toString(),
-      url: a.url,
-      public_id: a.public_id,
-      filename: a.filename,
-      uploadedAt: a.uploadedAt,
-    }));
+ const formatted = assignments.map((a) => ({
+  _id: a._id.toString(),
+  classId: a.classId?.toString(),
+  url: a.url,
+  public_id: a.public_id,
+  filename: a.filename,
+  uploadedAt: a.uploadedAt ? new Date(a.uploadedAt).toISOString() : null, // ✅ Always send string
+}));
 
     return NextResponse.json({ assignments: formatted });
   } catch (error) {
