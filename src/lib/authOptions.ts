@@ -14,6 +14,7 @@ interface DBUser {
   email: string;
   password: string;
   role?: string;
+  classId?: string; // ✅ Added classId
 }
 
 export const authOptions: NextAuthOptions = {
@@ -44,19 +45,24 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           role: user.role || "user",
-        } as User;
+          classId: user.classId ? user.classId.toString() : null, // ✅ Include classId
+        } as User & { classId?: string | null };
       },
     }),
   ],
 
   callbacks: {
-    async jwt({ token, user }: { token: JWT; user?: User }) {
-      if (user?.role) token.role = user.role;
+    async jwt({ token, user }: { token: JWT & { classId?: string | null }; user?: User & { classId?: string | null } }) {
+      if (user) {
+        token.role = user.role;
+        token.classId = user.classId || null; // ✅ Save in token
+      }
       return token;
     },
-    async session({ session, token }: { session: Session; token: JWT }) {
+    async session({ session, token }: { session: Session & { user: any }; token: JWT & { classId?: string | null } }) {
       if (session.user) {
         session.user.role = token.role as string;
+        session.user.classId = token.classId || null; // ✅ Pass to session
       }
       return session;
     },
