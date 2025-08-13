@@ -22,42 +22,28 @@ import { useEffect, useState } from "react";
 type Assignment = {
   _id: string;
   url: string;
-  classId: string;
   filename?: string;
-  uploadedAt?: string; // ✅ Added
-  subject?: string;    // ✅ Added (agar tum subject show karna chahte ho)
+  subject: string;
+  uploadedAt: string;
 };
+
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Wait until session is authenticated
     if (status === "loading") return;
-    if (status !== "authenticated") {
-      console.warn("User not authenticated");
-      return;
-    }
-    if (!session?.user?.classId) {
-      console.warn("No classId found in session");
-      return;
-    }
-
-    console.log("Fetching assignments for classId:", session.user.classId);
-    setLoading(true);
+    if (status !== "authenticated") return;
+    if (!session?.user?.classId) return;
 
     fetch(`/api/assignments/list?classId=${session.user.classId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("Assignments API Response:", data);
+      .then(res => res.json())
+      .then(data => {
         setAssignments(data.assignments || []);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("Error fetching assignments:", err);
-        setLoading(false);
-      });
+      .catch(() => setLoading(false));
   }, [status, session]);
 
   if (loading) return <p>Loading assignments...</p>;
@@ -67,26 +53,17 @@ export default function StudentDashboard() {
       <h1 className="text-3xl font-bold">Student Dashboard</h1>
       <h2 className="mb-4">Assignments for your class</h2>
       <ul>
-  {assignments.length === 0 && <li>No assignments found.</li>}
-{assignments.map((a) => (
-  <li key={a._id} className="mb-2">
-    <a
-      href={a.url} // ✅ Cloudinary ya file ka direct URL
-      target="_blank"
-      rel="noreferrer"
-      className="text-blue-600 hover:underline"
-    >
-      {a.subject || a.filename || "Assignment"} 
-      {a.uploadedAt && (
-        <span className="text-gray-500 text-sm ml-2">
-          ({new Date(a.uploadedAt).toLocaleDateString()})
-        </span>
-      )}
-    </a>
-  </li>
-))}
-
-</ul>
+        {assignments.length === 0 && <li>No assignments found.</li>}
+        {assignments.map((a) => (
+          <li key={a._id} className="mb-3 border-b pb-2">
+            <strong>Subject:</strong> {a.subject} <br />
+            <strong>Uploaded At:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
+            <a href={a.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+              {a.filename || "View Assignment"}
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
