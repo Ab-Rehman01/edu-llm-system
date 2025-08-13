@@ -80,46 +80,46 @@ import { useSession } from "next-auth/react";
 
 export default function HomePage() {
   const { data: session } = useSession();
-  const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg"; // public folder
+  const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
 
   return (
     <div
-      className="min-h-screen w-full bg-fixed bg-center bg-cover flex items-center justify-center"
+      className="min-h-screen w-full bg-fixed bg-center bg-cover flex items-center justify-center relative"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      {/* Overlay for blur and background color */}
+      {/* Fullscreen overlay */}
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
 
-      {/* Content */}
-      <div className="relative flex flex-col items-center justify-center space-y-4 text-center text-white">
+      {/* Content card */}
+      <div className="relative z-10 p-8 rounded-xl bg-white/20 backdrop-blur-lg flex flex-col items-center space-y-6 text-center">
         {session && session.user ? (
           <>
-            <h1 className="text-3xl font-bold drop-shadow-lg">
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">
               Welcome, {session.user.name ?? session.user.email}!
             </h1>
-            <p className="mb-6 drop-shadow-md">Go to your dashboard:</p>
+            <p className="text-white drop-shadow-md">Go to your dashboard:</p>
             <Link href={
               (session.user as { role?: string }).role === "admin" ? "/dashboard/admin" :
               (session.user as { role?: string }).role === "teacher" ? "/dashboard/teacher" :
               "/dashboard/student"
             }>
-              <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+              <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
                 Go to Dashboard
               </button>
             </Link>
           </>
         ) : (
           <>
-            <h1 className="text-4xl font-bold drop-shadow-lg">Welcome to Edu LLM</h1>
-            <p className="text-lg drop-shadow-md">Please sign in or sign up to access your portal.</p>
+            <h1 className="text-4xl font-bold text-white drop-shadow-lg">Welcome to Edu LLM</h1>
+            <p className="text-lg text-white drop-shadow-md">Please sign in or sign up to access your portal.</p>
             <div className="flex gap-4">
               <Link href="/signin">
-                <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition">
                   Sign In
                 </button>
               </Link>
               <Link href="/signup">
-                <button className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                <button className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition">
                   Sign Up
                 </button>
               </Link>
