@@ -146,25 +146,44 @@ type Assignment = {
   uploadedAt: string;
 };
 
+type Meeting = {
+  _id: string;
+  classId: string;
+  date: string;
+  time: string;
+  meetingLink: string;
+};
+
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.classId) return;
 
-    fetch(`/api/assignments/list?classId=${session.user.classId}`)
-      .then(res => res.json())
-      .then(data => {
-        setAssignments(data.assignments || []);
+    const fetchData = async () => {
+      try {
+        const [assignmentsRes, meetingsRes] = await Promise.all([
+          fetch(`/api/assignments/list?classId=${session.user.classId}`).then((res) => res.json()),
+          fetch(`/api/meetings?classId=${session.user.classId}`).then((res) => res.json()),
+        ]);
+
+        setAssignments(assignmentsRes.assignments || []);
+        setMeetings(meetingsRes.meetings || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    };
+
+    fetchData();
   }, [status, session]);
 
-  if (loading) return <p className="text-white">Loading assignments...</p>;
+  if (loading) return <p className="text-white">Loading dashboard...</p>;
 
   return (
     <div
@@ -174,14 +193,35 @@ export default function StudentDashboard() {
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
       <div className="relative text-white">
         <h1 className="text-3xl font-bold mb-2">Student Dashboard</h1>
+
+        {/* Assignments Section */}
         <h2 className="mb-4">Assignments for your class</h2>
         <ul>
           {assignments.length === 0 && <li>No assignments found.</li>}
-          {assignments.map(a => (
+          {assignments.map((a) => (
             <li key={a._id} className="mb-3 border-b pb-2">
               <strong>Subject:</strong> {a.subject} <br />
               <strong>Uploaded At:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
               <span className="text-blue-400">{a.filename || "View Assignment"}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Meetings Section */}
+        <h2 className="mt-6 mb-4">Upcoming Class Meetings</h2>
+        <ul>
+          {meetings.length === 0 && <li>No meetings scheduled.</li>}
+          {meetings.map((m) => (
+            <li key={m._id} className="mb-3 border-b pb-2">
+              <strong>Date:</strong> {m.date} <br />
+              <strong>Time:</strong> {m.time} <br />
+              <a
+                href={m.meetingLink}
+                target="_blank"
+                className="text-blue-400 underline"
+              >
+                Join Meeting
+              </a>
             </li>
           ))}
         </ul>
