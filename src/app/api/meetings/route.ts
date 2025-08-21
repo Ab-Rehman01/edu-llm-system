@@ -1,6 +1,4 @@
-
-
-// pages/api/meetings/index.ts
+// src/app/api/meetings/route.ts
 import clientPromise from "@/lib/mongodb";
 import { NextResponse } from "next/server";
 
@@ -12,14 +10,16 @@ export async function GET(req: Request) {
     const client = await clientPromise;
     const db = client.db("education-system");
 
+    const filter = classId ? { classId } : {};
     const meetings = await db
       .collection("meetings")
-      .find({ classId })
+      .find(filter)
       .sort({ date: 1, time: 1 })
       .toArray();
 
     return NextResponse.json({ meetings });
   } catch (err) {
+    console.error(err);
     return NextResponse.json({ error: "Failed to fetch meetings" }, { status: 500 });
   }
 }
