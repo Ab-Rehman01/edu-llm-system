@@ -267,7 +267,7 @@
 //     </div>
 //   );
 // }
-
+//dashboard/class/[classid]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -345,7 +345,7 @@ export default function ClassDashboard() {
     if (!classId) return;
     async function fetchMeetings() {
       try {
-        const res = await fetch(`/api/meetings?classId=${classId}`);
+        const res = await fetch(`/api/meetings/list?classId=${classId}`);
         const data = await res.json();
         setMeetings(data.meetings || []);
       } catch (err) {
