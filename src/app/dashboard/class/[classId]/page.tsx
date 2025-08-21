@@ -403,22 +403,30 @@ export default function ClassDashboard() {
           {meetings.length === 0 ? (
             <p>No meetings scheduled.</p>
           ) : (
+
             <ul>
-              {meetings.map(m => (
-                <li key={m._id} className="border p-2 mb-2 rounded bg-white bg-opacity-10">
-                  <strong>Date:</strong> {m.date} <br />
-                  <strong>Time:</strong> {m.time} <br />
-                  <a
-                    href={m.meetingLink}
-                    target="_blank"
-                    className="text-blue-400 underline"
-                  >
-                    Join Meeting
-                  </a>
+              {meetings.map((m) => (
+               < li key={m._id}>
+                {m.date} {m.time} - <a href={m.meetingLink} target="_blank">Join</a>
                 </li>
               ))}
-            </ul>
-          )}
+           </ul>
+          //   <ul>
+          //     {meetings.map(m => (
+          //       <li key={m._id} className="border p-2 mb-2 rounded bg-white bg-opacity-10">
+          //         <strong>Date:</strong> {m.date} <br />
+          //         <strong>Time:</strong> {m.time} <br />
+          //         <a
+          //           href={m.meetingLink}
+          //           target="_blank"
+          //           className="text-blue-400 underline"
+          //         >
+          //           Join Meeting
+          //         </a>
+          //       </li>
+          //     ))}
+          //   </ul>
+           )}
         </div>
       </div>
     </div>
