@@ -401,7 +401,7 @@ export default function ClassDashboard() {
         <div className="mt-10">
           <h2 className="text-xl font-semibold mb-2">Meetings</h2>
           {meetings.length === 0 ? (
-            <p>No meetings scheduled .</p>
+            <p>No meeetings scheduled .</p>
           ) : (
 
             <ul>
