@@ -267,7 +267,7 @@
 //     </div>
 //   );
 // }
-//dashboard/class/[classid]/page.tsx
+// dashboard/class/[classid]/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -286,12 +286,15 @@ interface ClassItem {
   _id: string;
   name: string;
 }
+
 interface Meeting {
   _id: string;
   classId: string;
   date: string;
   time: string;
   meetingLink: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 export default function ClassDashboard() {
@@ -305,9 +308,9 @@ export default function ClassDashboard() {
   const [className, setClassName] = useState<string>("");
   const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
 
+  // Fetch Assignments
   useEffect(() => {
     if (!classId) return;
-
     async function fetchAssignments() {
       setLoading(true);
       setError(null);
@@ -325,6 +328,7 @@ export default function ClassDashboard() {
     fetchAssignments();
   }, [classId]);
 
+  // Fetch Class Name
   useEffect(() => {
     if (!classId) return;
     async function fetchClassName() {
@@ -340,7 +344,7 @@ export default function ClassDashboard() {
     fetchClassName();
   }, [classId]);
 
-   // Fetch Meetings
+  // Fetch Meetings
   useEffect(() => {
     if (!classId) return;
     async function fetchMeetings() {
@@ -365,71 +369,79 @@ export default function ClassDashboard() {
     >
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
       <div className="relative text-white">
-        <h1 className="text-2xl font-bold mb-4">
-          Assignments for Class: {className || classId}
+        <h1 className="text-2xl font-bold mb-6">
+          Class Dashboard: {className || classId}
         </h1>
 
-        {assignments.length === 0 && <p>No assignments found.</p>}
+        {/* 📂 Assignments Section */}
+        <section>
+          <h2 className="text-xl font-semibold mb-3">Assignments</h2>
+          {assignments.length === 0 && <p>No assignments found.</p>}
+          <ul>
+            {assignments.map(a => (
+              <li key={a._id} className="mb-2">
+                <button
+                  onClick={() => setSelectedAssignment(a)}
+                  className="text-blue-400 underline"
+                >
+                  {a.fileName || a.subject || "View Assignment"} -{" "}
+                  {new Date(a.uploadedAt).toLocaleString()}
+                </button>
+              </li>
+            ))}
+          </ul>
 
-        <ul>
-          {assignments.map(a => (
-            <li key={a._id} className="mb-2">
-              <button
-                onClick={() => setSelectedAssignment(a)}
-                className="text-blue-400 underline"
-              >
-                {a.fileName || a.subject || "View Assignment"} - {new Date(a.uploadedAt).toLocaleString()}
-              </button>
-            </li>
-          ))}
-        </ul>
+          {selectedAssignment && (
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-2">
+                Viewing: {selectedAssignment.fileName || selectedAssignment.subject}
+              </h2>
+              <iframe
+                src={selectedAssignment.url}
+                className="w-full h-[600px] border"
+                title={selectedAssignment.fileName || selectedAssignment.subject}
+              />
+            </div>
+          )}
+        </section>
 
-        {selectedAssignment && (
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">
-              Viewing: {selectedAssignment.fileName || selectedAssignment.subject}
-            </h2>
-            <iframe
-              src={selectedAssignment.url}
-              className="w-full h-[600px] border"
-              title={selectedAssignment.fileName || selectedAssignment.subject}
-            />
-          </div>
-        )}
-
-        {/* 📅 Meetings */}
-        <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-2">Meetings</h2>
+        {/* 📅 Meetings Section */}
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold mb-4">Meetings</h2>
           {meetings.length === 0 ? (
-            <p>No meeetings scheduled .</p>
+            <p>No meetings scheduled.</p>
           ) : (
-
-            <ul>
-              {meetings.map((m) => (
-               < li key={m._id}>
-                {m.date} {m.time} - <a href={m.meetingLink} target="_blank">Join</a>
-                </li>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {meetings.map(m => (
+                <div
+                  key={m._id}
+                  className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
+                >
+                  <p className="text-lg font-bold text-yellow-300 mb-2">
+                    {m.date} @ {m.time}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Created By:</span>{" "}
+                    {m.createdBy}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Created At:</span>{" "}
+                    {new Date(m.createdAt).toLocaleString()}
+                  </p>
+                  <a
+                    href={m.meetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+                  >
+                    Join Meeting
+                  </a>
+                </div>
               ))}
-           </ul>
-          //   <ul>
-          //     {meetings.map(m => (
-          //       <li key={m._id} className="border p-2 mb-2 rounded bg-white bg-opacity-10">
-          //         <strong>Date:</strong> {m.date} <br />
-          //         <strong>Time:</strong> {m.time} <br />
-          //         <a
-          //           href={m.meetingLink}
-          //           target="_blank"
-          //           className="text-blue-400 underline"
-          //         >
-          //           Join Meeting
-          //         </a>
-          //       </li>
-          //     ))}
-          //   </ul>
-           )}
-        </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
 }
- 
