@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     const classId = searchParams.get("classId");
 
     const client = await clientPromise;
-    const db = client.db("yourDB");
+    const db = client.db("education-system");
 
     const meetings = await db
       .collection("meetings")
