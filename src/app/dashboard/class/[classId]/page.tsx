@@ -286,11 +286,19 @@ interface ClassItem {
   _id: string;
   name: string;
 }
+interface Meeting {
+  _id: string;
+  classId: string;
+  date: string;
+  time: string;
+  meetingLink: string;
+}
 
 export default function ClassDashboard() {
   const params = useParams();
   const classId = params?.classId as string;
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -330,6 +338,21 @@ export default function ClassDashboard() {
       }
     }
     fetchClassName();
+  }, [classId]);
+
+   // Fetch Meetings
+  useEffect(() => {
+    if (!classId) return;
+    async function fetchMeetings() {
+      try {
+        const res = await fetch(`/api/meetings?classId=${classId}`);
+        const data = await res.json();
+        setMeetings(data.meetings || []);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchMeetings();
   }, [classId]);
 
   if (loading) return <p className="text-white">Loading assignments...</p>;
@@ -373,7 +396,32 @@ export default function ClassDashboard() {
             />
           </div>
         )}
+
+        {/* 📅 Meetings */}
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold mb-2">Meetings</h2>
+          {meetings.length === 0 ? (
+            <p>No meetings scheduled.</p>
+          ) : (
+            <ul>
+              {meetings.map(m => (
+                <li key={m._id} className="border p-2 mb-2 rounded bg-white bg-opacity-10">
+                  <strong>Date:</strong> {m.date} <br />
+                  <strong>Time:</strong> {m.time} <br />
+                  <a
+                    href={m.meetingLink}
+                    target="_blank"
+                    className="text-blue-400 underline"
+                  >
+                    Join Meeting
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+ 

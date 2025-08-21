@@ -16,6 +16,13 @@ type ClassItem = {
   _id: string;
   name: string;
 };
+type Meeting = {
+  _id: string;
+  classId: string;
+  date: string;
+  time: string;
+  meetingLink: string;
+};
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
@@ -60,6 +67,17 @@ export default function AdminDashboard() {
       .then(res => res.json())
       .then(data => setClasses(data.classes || []));
   }, []);
+
+  // meetings list ke liye state
+const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+// fetch meetings
+useEffect(() => {
+  fetch("/api/meetings?classId=" + (selectedClassId || classes[0]?._id || ""))
+    .then(res => res.json())
+    .then(data => setMeetings(data.meetings || []));
+}, [selectedClassId, classes]);
+
 
   // Update user role or class
   const updateUser = async (userId: string, updates: Partial<{ role: string; classId: string }>) => {
