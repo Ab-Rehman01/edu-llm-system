@@ -75,7 +75,10 @@ const [meetings, setMeetings] = useState<Meeting[]>([]);
 useEffect(() => {
   fetch("/api/meetings/list?classId=" + (selectedClassId || classes[0]?._id || ""))
     .then(res => res.json())
-    .then(data => setMeetings(data.meetings || []));
+    .then(data => {
+      console.log("Meetings fetched:", data); // debug
+      setMeetings(data.meetings || []);
+});
 }, [selectedClassId, classes]);
 
 
