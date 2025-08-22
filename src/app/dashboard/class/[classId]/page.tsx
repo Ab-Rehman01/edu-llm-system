@@ -270,65 +270,169 @@
 // dashboard/class/[classid]/page.tsx
 // src/app/dashboard/class/[classId]/page.tsx
 // src/app/dashboard/class/[classId]/page.tsx
-import ZoomInlineJoiner from "@/components/ZoomInlineJoiner";
-import { extractMeetingNumberAndPwd } from "@/utils/zoom";
 
-export default async function ClassDashboard({
-  params,
-}: {
-  params: { classId: string };
-}): Promise<JSX.Element> {
-  const { classId } = params;
+"use client";
 
-  // server-side fetch
-  const [assignmentsRes, meetingsRes] = await Promise.all([
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/assignments/list?classId=${classId}`),
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/meetings/list?classId=${classId}`),
-  ]);
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 
-  const assignments = (await assignmentsRes.json()).assignments || [];
-  const meetings = (await meetingsRes.json()).meetings || [];
+interface Assignment {
+  _id: string;
+  url: string;
+  fileName?: string;
+  classId: string;
+  subject: string;
+  uploadedAt: string;
+}
+
+interface ClassItem {
+  _id: string;
+  name: string;
+}
+interface Meeting {
+  _id: string;
+  classId: string;
+  date: string;
+  time: string;
+  meetingLink: string;
+}
+
+export default function ClassDashboard() {
+  const params = useParams();
+  const classId = params?.classId as string;
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [className, setClassName] = useState<string>("");
+  const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
+
+  useEffect(() => {
+    if (!classId) return;
+
+    async function fetchAssignments() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/assignments/list?classId=${classId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to fetch assignments");
+        setAssignments(data.assignments || data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAssignments();
+  }, [classId]);
+
+  useEffect(() => {
+    if (!classId) return;
+    async function fetchClassName() {
+      try {
+        const res = await fetch(`/api/classes/list`);
+        const data = await res.json();
+        const cls = data.classes.find((c: ClassItem) => c._id === classId);
+        if (cls) setClassName(cls.name);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchClassName();
+  }, [classId]);
+
+   // Fetch Meetings
+  useEffect(() => {
+    if (!classId) return;
+    async function fetchMeetings() {
+      try {
+        const res = await fetch(`/api/meetings?classId=${classId}`);
+        const data = await res.json();
+        setMeetings(data.meetings || []);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    fetchMeetings();
+  }, [classId]);
+
+  if (loading) return <p className="text-white">Loading assignments...</p>;
+  if (error) return <p className="text-red-600">Error: {error}</p>;
 
   return (
-    <div>
-      <h1>Class Dashboard: {classId}</h1>
+    <div
+      className="min-h-screen w-full bg-fixed bg-center bg-cover p-6 relative"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+    >
+      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
+      <div className="relative text-white">
+        <h1 className="text-2xl font-bold mb-4">
+          Assignments for Class: {className || classId}
+        </h1>
 
-      <section>
-        <h2>Assignments</h2>
-        {assignments.length === 0 ? <p>No assignments</p> : (
-          <ul>
-            {assignments.map((a: any) => (
-              <li key={a._id}>{a.fileName || a.subject}</li>
-            ))}
-          </ul>
+        {assignments.length === 0 && <p>No assignments found.</p>}
+
+        <ul>
+          {assignments.map(a => (
+            <li key={a._id} className="mb-2">
+              <button
+                onClick={() => setSelectedAssignment(a)}
+                className="text-blue-400 underline"
+              >
+                {a.fileName || a.subject || "View Assignment"} - {new Date(a.uploadedAt).toLocaleString()}
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        {selectedAssignment && (
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-2">
+              Viewing: {selectedAssignment.fileName || selectedAssignment.subject}
+            </h2>
+            <iframe
+              src={selectedAssignment.url}
+              className="w-full h-[600px] border"
+              title={selectedAssignment.fileName || selectedAssignment.subject}
+            />
+          </div>
         )}
-      </section>
 
-      <section>
-        <h2>Meetings</h2>
-        {meetings.length === 0 ? <p>No meetings</p> : (
-          <ul>
-            {meetings.map((m: any) => {
-              const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink);
-              return (
-                <li key={m._id}>
-                  {m.date} @ {m.time} - 
-                  <ZoomInlineJoiner
-                    meetingId={meetingNumber}
-                    meetingPassword={password}
-                    userName="Student"
-                    userEmail="student@example.com"
-                    classId={classId}
-                    dbMeetingId={m._id}
-                    userId="student_id"
-                    onClose={() => {}}
-                  />
+        {/* 📅 Meetings */}
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold mb-2">Meetings</h2>
+          {meetings.length === 0 ? (
+            <p>No meetings scheduled .</p>
+          ) : (
+
+            <ul>
+              {meetings.map((m) => (
+               < li key={m._id}>
+                {m.date} {m.time} - <a href={m.meetingLink} target="_blank">Join</a>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+              ))}
+           </ul>
+          //   <ul>
+          //     {meetings.map(m => (
+          //       <li key={m._id} className="border p-2 mb-2 rounded bg-white bg-opacity-10">
+          //         <strong>Date:</strong> {m.date} <br />
+          //         <strong>Time:</strong> {m.time} <br />
+          //         <a
+          //           href={m.meetingLink}
+          //           target="_blank"
+          //           className="text-blue-400 underline"
+          //         >
+          //           Join Meeting
+          //         </a>
+          //       </li>
+          //     ))}
+          //   </ul>
+           )}
+        </div>
+      </div>
     </div>
   );
 }
+ 
