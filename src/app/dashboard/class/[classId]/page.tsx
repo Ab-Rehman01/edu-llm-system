@@ -268,10 +268,9 @@
 //   );
 // }
 // dashboard/class/[classid]/page.tsx
-"use client";
-import { useState, useEffect } from "react";
+// src/app/dashboard/class/[classId]/page.tsx
 import { extractMeetingNumberAndPwd } from "@/utils/zoom";
-import ZoomInlineJoiner from "@/components/ZoomInlineJoiner"; // <- ye component tum banayoge
+import ZoomInlineJoiner from "@/components/ZoomInlineJoiner";
 
 interface Assignment {
   _id: string;
@@ -280,11 +279,6 @@ interface Assignment {
   classId: string;
   subject: string;
   uploadedAt: string;
-}
-
-interface ClassItem {
-  _id: string;
-  name: string;
 }
 
 interface Meeting {
@@ -297,229 +291,85 @@ interface Meeting {
   createdAt: string;
 }
 
-interface ClassDashboardProps {
-  params: {
-    classId: string;
-  };
+interface ClassItem {
+  _id: string;
+  name: string;
 }
 
-export default function ClassDashboard({ params }: ClassDashboardProps) {
-    //export default function ClassDashboard() {
+// Server Component
+export default async function ClassDashboard({ params }: { params: { classId: string } }) {
+  const classId = params.classId;
 
-  const classId = params?.classId as string;
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [className, setClassName] = useState<string>("");
-  const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
-  const [activeMeeting, setActiveMeeting] = useState<null | {
-    meetingNumber: string;
-    password?: string;
-    _id: string;
-  }>(null);
+  // Server-side fetch
+  const [assignmentsRes, meetingsRes, classesRes] = await Promise.all([
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/assignments/list?classId=${classId}`),
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/meetings/list?classId=${classId}`),
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/classes/list`),
+  ]);
 
+  const assignmentsData = await assignmentsRes.json();
+  const meetingsData = await meetingsRes.json();
+  const classesData = await classesRes.json();
 
-  // Fetch Assignments
-  useEffect(() => {
-    if (!classId) return;
-    async function fetchAssignments() {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/assignments/list?classId=${classId}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to fetch assignments");
-        setAssignments(data.assignments || data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAssignments();
-  }, [classId]);
-
-  // Fetch Class Name
-  useEffect(() => {
-    if (!classId) return;
-    async function fetchClassName() {
-      try {
-        const res = await fetch(`/api/classes/list`);
-        const data = await res.json();
-        const cls = data.classes.find((c: ClassItem) => c._id === classId);
-        if (cls) setClassName(cls.name);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    fetchClassName();
-  }, [classId]);
-
-  // Fetch Meetings
-  useEffect(() => {
-    if (!classId) return;
-    async function fetchMeetings() {
-      try {
-        const res = await fetch(`/api/meetings/list?classId=${classId}`);
-        const data = await res.json();
-        setMeetings(data.meetings || []);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    fetchMeetings();
-  }, [classId]);
-  
-  
-
-
-  if (loading) return <p className="text-white">Loading assignments...</p>;
-  if (error) return <p className="text-red-600">Error: {error}</p>;
+  const assignments: Assignment[] = assignmentsData.assignments || [];
+  const meetings: Meeting[] = meetingsData.meetings || [];
+  const className = classesData.classes.find((c: ClassItem) => c._id === classId)?.name || classId;
 
   return (
-    <div
-      className="min-h-screen w-full bg-fixed bg-center bg-cover p-6 relative"
-      style={{ backgroundImage: `url(${backgroundImage})` }}
-    >
+    <div className="min-h-screen w-full bg-fixed bg-center bg-cover p-6 relative" style={{ backgroundImage: "url(/pexels-hai-nguyen-825252-1699414.jpg)" }}>
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
       <div className="relative text-white">
-        <h1 className="text-2xl font-bold mb-6">
-          Class Dashboard: {className || classId}
-        </h1>
+        <h1 className="text-2xl font-bold mb-6">Class Dashboard: {className}</h1>
 
-        {/* 📂 Assignments Section */}
+        {/* Assignments */}
         <section>
           <h2 className="text-xl font-semibold mb-3">Assignments</h2>
-          {assignments.length === 0 && <p>No assignments found.</p>}
-          <ul>
-            {assignments.map(a => (
-              <li key={a._id} className="mb-2">
-                <button
-                  onClick={() => setSelectedAssignment(a)}
-                  className="text-blue-400 underline"
-                >
-                  {a.fileName || a.subject || "View Assignment"} -{" "}
-                  {new Date(a.uploadedAt).toLocaleString()}
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          {selectedAssignment && (
-            <div className="mt-6">
-              <h2 className="text-xl font-semibold mb-2">
-                Viewing: {selectedAssignment.fileName || selectedAssignment.subject}
-              </h2>
-              <iframe
-                src={selectedAssignment.url}
-                className="w-full h-[600px] border"
-                title={selectedAssignment.fileName || selectedAssignment.subject}
-              />
-            </div>
+          {assignments.length === 0 ? <p>No assignments found.</p> : (
+            <ul>
+              {assignments.map(a => (
+                <li key={a._id} className="mb-2">
+                  <a href={a.url} target="_blank" className="text-blue-400 underline">
+                    {a.fileName || a.subject} - {new Date(a.uploadedAt).toLocaleString()}
+                  </a>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 
-        {/* 📅 Meetings Section */}
+        {/* Meetings */}
         <section className="mt-10">
           <h2 className="text-xl font-semibold mb-4">Meetings</h2>
-          {meetings.length === 0 ? (
-            <p>No meetings scheduled.</p>
-          ) : (
+          {meetings.length === 0 ? <p>No meetings scheduled.</p> : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {meetings.map(m => (
-                <div
-                  key={m._id}
-                  className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
-                >
-                  <p className="text-lg font-bold text-yellow-300 mb-2">
-                    {m.date} @ {m.time}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Created By:</span>{" "}
-                    {m.createdBy}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Created At:</span>{" "}
-                    {new Date(m.createdAt).toLocaleString()}
-                  </p>
-                  <a
-                    href={m.meetingLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
-                  >
-                    Join Meeting
-                  </a>
-                </div>
-              ))}
+              {meetings.map(m => {
+                const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink || "");
+                return (
+                  <div key={m._id} className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300">
+                    <p className="text-lg font-bold text-yellow-300 mb-2">{m.date} @ {m.time}</p>
+                    <p><span className="font-semibold">Created By:</span> {m.createdBy}</p>
+                    <p><span className="font-semibold">Created At:</span> {new Date(m.createdAt).toLocaleString()}</p>
+                    <a href={m.meetingLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">Open in Zoom</a>
+                    {/* Zoom Inline Join - Client Component */}
+                    <div className="mt-3">
+                      <ZoomInlineJoiner
+                        meetingId={meetingNumber}
+                        meetingPassword={password}
+                        userName="Student Name" // replace with session user
+                        userEmail="student@example.com"
+                        classId={classId}
+                        dbMeetingId={m._id}
+                        userId="student_id_here"
+                        onClose={() => {}}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
-
-        {/* 📅 load Meetings Section */}
-        <section className="mt-10">
-          <div className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Class Meetings</h1>
-
-            <ul>
-              {meetings.map((m) => {
-                const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink || "");
-                return (
-                  <li
-                    key={m._id}
-                    className="border p-3 mb-3 rounded-xl bg-white/10 backdrop-blur"
-                  >
-                    <div className="flex items-center justify-between gap-4 flex-wrap">
-                      <div>
-                        <div className="font-semibold">
-                          {new Date(m.date).toLocaleDateString()} — {m.time}
-                        </div>
-                        <div className="text-sm opacity-80">
-                          Created: {new Date(m.createdAt).toLocaleString()}
-                        </div>
-                        <a
-                          href={m.meetingLink}
-                          target="_blank"
-                          className="text-blue-300 underline"
-                        >
-                          Open in Zoom (new tab)
-                        </a>
-                      </div>
-                      <button
-                        onClick={() =>
-                          setActiveMeeting({ meetingNumber, password, _id: m._id })
-                        }
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
-                      >
-                        Join inline
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-
-            {/* inline joiner */}
-            {activeMeeting && (
-              <div className="mt-6">
-                <ZoomInlineJoiner
-                  meetingId={activeMeeting.meetingNumber}
-                  meetingPassword={activeMeeting.password}
-                  userName={"Student"} // <- yahan real logged in user ka name/email dena hai
-                  userEmail={"student@example.com"}
-                  classId={classId}
-                  dbMeetingId={activeMeeting._id}
-                  userId={"<currentUserId or email>"}
-                  onClose={() => setActiveMeeting(null)}
-                />
-              </div>
-            )}
-          </div>
-        </section>
-
-    </div>
+      </div>
     </div>
   );
 }
