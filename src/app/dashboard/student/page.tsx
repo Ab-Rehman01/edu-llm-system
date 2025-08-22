@@ -16,18 +16,20 @@ type Meeting = {
   date: string;
   time: string;
   meetingLink: string;
+    createdBy: string;
+  createdAt: string;
 };
 
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classes] = useState([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  
+
   const [selectedClassId, setSelectedClassId] = useState<string>("");
-  
+
   const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   useEffect(() => {
@@ -43,11 +45,11 @@ export default function StudentDashboard() {
       })
       .catch(() => setLoading(false));
   }, [status, session]);
-// fetch meetings
- useEffect(() => {
+  // fetch meetings
+  useEffect(() => {
     if (!session?.user?.classId) return;
 
-  fetch("/api/meetings/list?classId=" + session.user.classId)
+    fetch("/api/meetings/list?classId=" + session.user.classId)
       .then(res => res.json())
       .then(data => {
         console.log("Meetings fetched:", data); // debug
@@ -66,12 +68,12 @@ export default function StudentDashboard() {
 
   return (
     <div className="p-6">
-      
+
       <h1 className="text-3xl font-bold mb-4">Student Dashboard</h1>
       <h2 className="mb-4">Assignments for your class</h2>
 
       {assignments.length === 0 && <p>No assignments found.</p>}
-    
+
 
       <ul className="space-y-3">
         {assignments.map(a => (
@@ -92,26 +94,42 @@ export default function StudentDashboard() {
           </li>
         ))}
       </ul>
-      <h2 className="mt-8 mb-4 text-xl font-semibold">Upcoming Meetings</h2>
-
-{meetings.length === 0 && <p>No meetings scheduled.</p>}
-
-<ul className="space-y-3">
-  {meetings.map(m => (
-    <li key={m._id} className="border p-3 rounded">
-      <p><strong>Date:</strong> {m.date}</p>
-      <p><strong>Time:</strong> {m.time}</p>
-      <a
-        href={m.meetingLink}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-blue-600 hover:underline"
-      >
-        Join Meeting
-      </a>
-    </li>
-  ))}
-</ul>
+      {/* 📅 Meetings Section */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold mb-4">Meetings</h2>
+        {meetings.length === 0 ? (
+          <p>No meetings scheduled.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {meetings.map(m => (
+              <div
+                key={m._id}
+                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
+              >
+                <p className="text-lg font-bold text-yellow-300 mb-2">
+                  {m.date} @ {m.time}
+                </p>
+                <p>
+                  <span className="font-semibold">Created By:</span>{" "}
+                  {m.createdBy || "Admin"}
+                </p>
+                <p>
+                  <span className="font-semibold">Created At:</span>{" "}
+                  {new Date(m.createdAt).toLocaleString()}
+                </p>
+                <a
+                  href={m.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+                >
+                  Join Meeting
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {selectedAssignment && (
         <div className="mt-6 border-t pt-4">
@@ -160,12 +178,12 @@ export default function StudentDashboard() {
             </p>
           )}
         </div>
-        
 
-        
+
+
       )}
     </div>
-    
+
   );
 }
 
