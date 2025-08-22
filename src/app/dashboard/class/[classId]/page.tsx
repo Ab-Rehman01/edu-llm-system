@@ -273,7 +273,6 @@ import { useState, useEffect } from "react";
 import { extractMeetingNumberAndPwd } from "@/utils/zoom";
 import ZoomInlineJoiner from "@/components/ZoomInlineJoiner"; // <- ye component tum banayoge
 
-
 interface Assignment {
   _id: string;
   url: string;
@@ -296,6 +295,10 @@ interface Meeting {
   meetingLink: string;
   createdBy: string;
   createdAt: string;
+}
+
+interface ClassDashboardProps {
+  params: { classId: string };
 }
 export default function ClassDashboard({ params }: { params: { classId: string } }) {
   //export default function ClassDashboard() {
