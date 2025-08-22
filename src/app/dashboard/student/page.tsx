@@ -137,7 +137,7 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import ZoomInlineJoiner from "@/components/ZoomInlineJoiner"; // tumhara inline joiner component
+import ZoomInlineJoiner from "@/components/ZoomInlineJoiner";
 import { extractMeetingNumberAndPwd } from "@/utils/zoom";
 
 type Assignment = {
@@ -154,6 +154,8 @@ type Meeting = {
   date: string;
   time: string;
   meetingLink: string;
+  createdBy: string;
+  createdAt: string;
 };
 
 export default function StudentDashboard() {
@@ -166,6 +168,7 @@ export default function StudentDashboard() {
     password?: string;
     _id: string;
   }>(null);
+
   const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
 
   useEffect(() => {
@@ -174,8 +177,8 @@ export default function StudentDashboard() {
     const fetchData = async () => {
       try {
         const [assignmentsRes, meetingsRes] = await Promise.all([
-          fetch(`/api/assignments/list?classId=${session.user.classId}`).then((res) => res.json()),
-          fetch(`/api/meetings/list?classId=${session.user.classId}`).then((res) => res.json()),
+          fetch(`/api/assignments/list?classId=${session?.user?.classId}`).then(res => res.json()),
+          fetch(`/api/meetings/list?classId=${session?.user?.classId}`).then(res => res.json()),
         ]);
 
         setAssignments(assignmentsRes.assignments || []);
@@ -189,7 +192,6 @@ export default function StudentDashboard() {
 
     fetchData();
   }, [status, session]);
-
   if (loading) return <p className="text-white">Loading dashboard...</p>;
 
   return (
@@ -209,7 +211,9 @@ export default function StudentDashboard() {
             <li key={a._id} className="mb-3 border-b pb-2">
               <strong>Subject:</strong> {a.subject} <br />
               <strong>Uploaded At:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
-              <span className="text-blue-400">{a.filename || "View Assignment"}</span>
+              <a href={a.url} target="_blank" className="text-blue-400 underline">
+                {a.filename || "View Assignment"}
+              </a>
             </li>
           ))}
         </ul>
@@ -224,20 +228,29 @@ export default function StudentDashboard() {
               <li key={m._id} className="mb-3 border-b pb-2">
                 <strong>Date:</strong> {m.date} <br />
                 <strong>Time:</strong> {m.time} <br />
-                <button
-                  className="text-blue-400 underline"
-                  onClick={() =>
-                    setActiveMeeting({ meetingNumber, password, _id: m._id })
-                  }
-                >
-                  Join Inline
-                </button>
+                <div className="flex gap-4 flex-wrap mt-1">
+                  <a
+                    href={m.meetingLink}
+                    target="_blank"
+                    className="text-blue-400 underline"
+                  >
+                    Open in Zoom
+                  </a>
+                  <button
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded"
+                    onClick={() =>
+                      setActiveMeeting({ meetingNumber, password, _id: m._id })
+                    }
+                  >
+                    Join Inline
+                  </button>
+                </div>
               </li>
             );
           })}
         </ul>
 
-        {/* Inline Zoom Meeting */}
+        {/* Zoom Inline Join */}
         {activeMeeting && (
           <div className="mt-6 border p-4 rounded bg-black/60">
             <ZoomInlineJoiner
@@ -247,7 +260,7 @@ export default function StudentDashboard() {
               userEmail={session?.user?.email || ""}
               classId={session?.user?.classId || ""}
               dbMeetingId={activeMeeting._id}
-              userId={session?.user?.email || ""}
+              userId={session?.user?.email || session?.user?.id || ""}
               onClose={() => setActiveMeeting(null)}
             />
           </div>
