@@ -269,9 +269,10 @@
 // }
 // dashboard/class/[classid]/page.tsx
 "use client";
+import { useState, useEffect } from "react";
+import { extractMeetingNumberAndPwd } from "@/utils/zoom";
+import ZoomInlineJoiner from "@/components/ZoomInlineJoiner"; // <- ye component tum banayoge
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
 
 interface Assignment {
   _id: string;
@@ -296,9 +297,9 @@ interface Meeting {
   createdBy: string;
   createdAt: string;
 }
+export default function ClassDashboard({ params }: { params: { classId: string } }) {
+  //export default function ClassDashboard() {
 
-export default function ClassDashboard() {
-  const params = useParams();
   const classId = params?.classId as string;
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -307,6 +308,12 @@ export default function ClassDashboard() {
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [className, setClassName] = useState<string>("");
   const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
+  const [activeMeeting, setActiveMeeting] = useState<null | {
+    meetingNumber: string;
+    password?: string;
+    _id: string;
+  }>(null);
+
 
   // Fetch Assignments
   useEffect(() => {
@@ -358,6 +365,9 @@ export default function ClassDashboard() {
     }
     fetchMeetings();
   }, [classId]);
+  
+  
+
 
   if (loading) return <p className="text-white">Loading assignments...</p>;
   if (error) return <p className="text-red-600">Error: {error}</p>;
@@ -441,7 +451,69 @@ export default function ClassDashboard() {
             </div>
           )}
         </section>
-      </div>
+
+        {/* 📅 load Meetings Section */}
+        <section className="mt-10">
+          <div className="p-6">
+            <h1 className="text-2xl font-bold mb-4">Class Meetings</h1>
+
+            <ul>
+              {meetings.map((m) => {
+                const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink || "");
+                return (
+                  <li
+                    key={m._id}
+                    className="border p-3 mb-3 rounded-xl bg-white/10 backdrop-blur"
+                  >
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <div className="font-semibold">
+                          {new Date(m.date).toLocaleDateString()} — {m.time}
+                        </div>
+                        <div className="text-sm opacity-80">
+                          Created: {new Date(m.createdAt).toLocaleString()}
+                        </div>
+                        <a
+                          href={m.meetingLink}
+                          target="_blank"
+                          className="text-blue-300 underline"
+                        >
+                          Open in Zoom (new tab)
+                        </a>
+                      </div>
+                      <button
+                        onClick={() =>
+                          setActiveMeeting({ meetingNumber, password, _id: m._id })
+                        }
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+                      >
+                        Join inline
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* inline joiner */}
+            {activeMeeting && (
+              <div className="mt-6">
+                <ZoomInlineJoiner
+                  meetingId={activeMeeting.meetingNumber}
+                  meetingPassword={activeMeeting.password}
+                  userName={"Student"} // <- yahan real logged in user ka name/email dena hai
+                  userEmail={"student@example.com"}
+                  classId={classId}
+                  dbMeetingId={activeMeeting._id}
+                  userId={"<currentUserId or email>"}
+                  onClose={() => setActiveMeeting(null)}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+    </div>
     </div>
   );
 }
