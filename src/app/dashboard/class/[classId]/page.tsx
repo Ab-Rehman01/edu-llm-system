@@ -369,6 +369,7 @@ export default async function ClassDashboard({ params }: { params: { classId: st
             </div>
           )}
         </section>
+
       </div>
     </div>
   );
