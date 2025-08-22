@@ -269,110 +269,66 @@
 // }
 // dashboard/class/[classid]/page.tsx
 // src/app/dashboard/class/[classId]/page.tsx
+// src/app/dashboard/class/[classId]/page.tsx
 import ZoomInlineJoiner from "@/components/ZoomInlineJoiner";
 import { extractMeetingNumberAndPwd } from "@/utils/zoom";
 
-interface Assignment {
-  _id: string;
-  url: string;
-  fileName?: string;
-  classId: string;
-  subject: string;
-  uploadedAt: string;
-}
-
-interface Meeting {
-  _id: string;
-  classId: string;
-  date: string;
-  time: string;
-  meetingLink: string;
-  createdBy: string;
-  createdAt: string;
-}
-
-interface ClassItem {
-  _id: string;
-  name: string;
-}
-
-interface PageProps {
-  params: {
-    classId: string;
-  };
-}
-
-export default async function ClassDashboard({ params }: PageProps): Promise<JSX.Element> {
+export default async function ClassDashboard({
+  params,
+}: {
+  params: { classId: string };
+}): Promise<JSX.Element> {
   const { classId } = params;
 
   // server-side fetch
-  const [assignmentsRes, meetingsRes, classesRes] = await Promise.all([
+  const [assignmentsRes, meetingsRes] = await Promise.all([
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/assignments/list?classId=${classId}`),
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/meetings/list?classId=${classId}`),
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/classes/list`),
   ]);
 
-  const assignmentsData = await assignmentsRes.json();
-  const meetingsData = await meetingsRes.json();
-  const classesData = await classesRes.json();
-
-  const assignments: Assignment[] = assignmentsData.assignments || [];
-  const meetings: Meeting[] = meetingsData.meetings || [];
-  const className = classesData.classes.find((c: ClassItem) => c._id === classId)?.name || classId;
+  const assignments = (await assignmentsRes.json()).assignments || [];
+  const meetings = (await meetingsRes.json()).meetings || [];
 
   return (
-    <div className="min-h-screen w-full p-6 relative" style={{ backgroundImage: "url(/pexels-hai-nguyen-825252-1699414.jpg)", backgroundSize: "cover" }}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-md"></div>
-      <div className="relative text-white">
-        <h1 className="text-2xl font-bold mb-6">Class Dashboard: {className}</h1>
+    <div>
+      <h1>Class Dashboard: {classId}</h1>
 
-        <section>
-          <h2 className="text-xl font-semibold mb-3">Assignments</h2>
-          {assignments.length === 0 ? <p>No assignments found.</p> : (
-            <ul>
-              {assignments.map(a => (
-                <li key={a._id} className="mb-2">
-                  <a href={a.url} target="_blank" className="text-blue-400 underline">
-                    {a.fileName || a.subject} - {new Date(a.uploadedAt).toLocaleString()}
-                  </a>
+      <section>
+        <h2>Assignments</h2>
+        {assignments.length === 0 ? <p>No assignments</p> : (
+          <ul>
+            {assignments.map((a: any) => (
+              <li key={a._id}>{a.fileName || a.subject}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h2>Meetings</h2>
+        {meetings.length === 0 ? <p>No meetings</p> : (
+          <ul>
+            {meetings.map((m: any) => {
+              const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink);
+              return (
+                <li key={m._id}>
+                  {m.date} @ {m.time} - 
+                  <ZoomInlineJoiner
+                    meetingId={meetingNumber}
+                    meetingPassword={password}
+                    userName="Student"
+                    userEmail="student@example.com"
+                    classId={classId}
+                    dbMeetingId={m._id}
+                    userId="student_id"
+                    onClose={() => {}}
+                  />
                 </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold mb-4">Meetings</h2>
-          {meetings.length === 0 ? <p>No meetings scheduled.</p> : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {meetings.map(m => {
-                const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink || "");
-                return (
-                  <div key={m._id} className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow">
-                    <p className="text-lg font-bold text-yellow-300 mb-2">{m.date} @ {m.time}</p>
-                    <p><strong>Created By:</strong> {m.createdBy}</p>
-                    <p><strong>Created At:</strong> {new Date(m.createdAt).toLocaleString()}</p>
-                    <a href={m.meetingLink} target="_blank" className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow">Open in Zoom</a>
-
-                    <div className="mt-3">
-                      <ZoomInlineJoiner
-                        meetingId={meetingNumber}
-                        meetingPassword={password}
-                        userName="Student Name"
-                        userEmail="student@example.com"
-                        classId={classId}
-                        dbMeetingId={m._id}
-                        userId="student_id_here"
-                        onClose={() => {}}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
