@@ -137,6 +137,8 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import ZoomInlineJoiner from "@/components/ZoomInlineJoiner"; // tumhara inline joiner component
+import { extractMeetingNumberAndPwd } from "@/utils/zoom";
 
 type Assignment = {
   _id: string;
@@ -159,6 +161,11 @@ export default function StudentDashboard() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeMeeting, setActiveMeeting] = useState<null | {
+    meetingNumber: string;
+    password?: string;
+    _id: string;
+  }>(null);
   const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
 
   useEffect(() => {
@@ -168,7 +175,7 @@ export default function StudentDashboard() {
       try {
         const [assignmentsRes, meetingsRes] = await Promise.all([
           fetch(`/api/assignments/list?classId=${session.user.classId}`).then((res) => res.json()),
-          fetch(`/api/meetings?classId=${session.user.classId}`).then((res) => res.json()),
+          fetch(`/api/meetings/list?classId=${session.user.classId}`).then((res) => res.json()),
         ]);
 
         setAssignments(assignmentsRes.assignments || []);
@@ -211,20 +218,40 @@ export default function StudentDashboard() {
         <h2 className="mt-6 mb-4">Upcoming Class Meetings</h2>
         <ul>
           {meetings.length === 0 && <li>No meetings scheduled.</li>}
-          {meetings.map((m) => (
-            <li key={m._id} className="mb-3 border-b pb-2">
-              <strong>Date:</strong> {m.date} <br />
-              <strong>Time:</strong> {m.time} <br />
-              <a
-                href={m.meetingLink}
-                target="_blank"
-                className="text-blue-400 underline"
-              >
-                Join Meeting
-              </a>
-            </li>
-          ))}
+          {meetings.map((m) => {
+            const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink || "");
+            return (
+              <li key={m._id} className="mb-3 border-b pb-2">
+                <strong>Date:</strong> {m.date} <br />
+                <strong>Time:</strong> {m.time} <br />
+                <button
+                  className="text-blue-400 underline"
+                  onClick={() =>
+                    setActiveMeeting({ meetingNumber, password, _id: m._id })
+                  }
+                >
+                  Join Inline
+                </button>
+              </li>
+            );
+          })}
         </ul>
+
+        {/* Inline Zoom Meeting */}
+        {activeMeeting && (
+          <div className="mt-6 border p-4 rounded bg-black/60">
+            <ZoomInlineJoiner
+              meetingId={activeMeeting.meetingNumber}
+              meetingPassword={activeMeeting.password}
+              userName={session?.user?.name || "Student"}
+              userEmail={session?.user?.email || ""}
+              classId={session?.user?.classId || ""}
+              dbMeetingId={activeMeeting._id}
+              userId={session?.user?.email || ""}
+              onClose={() => setActiveMeeting(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
