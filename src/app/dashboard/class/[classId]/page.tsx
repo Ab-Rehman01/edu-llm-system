@@ -298,10 +298,13 @@ interface Meeting {
 }
 
 interface ClassDashboardProps {
-  params: { classId: string };
+  params: {
+    classId: string;
+  };
 }
-export default function ClassDashboard({ params }: { params: { classId: string } }) {
-  //export default function ClassDashboard() {
+
+export default function ClassDashboard({ params }: ClassDashboardProps) {
+    //export default function ClassDashboard() {
 
   const classId = params?.classId as string;
   const [assignments, setAssignments] = useState<Assignment[]>([]);
