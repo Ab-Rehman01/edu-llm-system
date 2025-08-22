@@ -269,8 +269,8 @@
 // }
 // dashboard/class/[classid]/page.tsx
 // src/app/dashboard/class/[classId]/page.tsx
-import { extractMeetingNumberAndPwd } from "@/utils/zoom";
 import ZoomInlineJoiner from "@/components/ZoomInlineJoiner";
+import { extractMeetingNumberAndPwd } from "@/utils/zoom";
 
 interface Assignment {
   _id: string;
@@ -296,11 +296,16 @@ interface ClassItem {
   name: string;
 }
 
-// Server Component
-export default async function ClassDashboard({ params }: { params: { classId: string } }) {
-  const classId = params.classId;
+interface PageProps {
+  params: {
+    classId: string;
+  };
+}
 
-  // Server-side fetch
+export default async function ClassDashboard({ params }: PageProps): Promise<JSX.Element> {
+  const { classId } = params;
+
+  // server-side fetch
   const [assignmentsRes, meetingsRes, classesRes] = await Promise.all([
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/assignments/list?classId=${classId}`),
     fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/meetings/list?classId=${classId}`),
@@ -316,12 +321,11 @@ export default async function ClassDashboard({ params }: { params: { classId: st
   const className = classesData.classes.find((c: ClassItem) => c._id === classId)?.name || classId;
 
   return (
-    <div className="min-h-screen w-full bg-fixed bg-center bg-cover p-6 relative" style={{ backgroundImage: "url(/pexels-hai-nguyen-825252-1699414.jpg)" }}>
-      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
+    <div className="min-h-screen w-full p-6 relative" style={{ backgroundImage: "url(/pexels-hai-nguyen-825252-1699414.jpg)", backgroundSize: "cover" }}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-md"></div>
       <div className="relative text-white">
         <h1 className="text-2xl font-bold mb-6">Class Dashboard: {className}</h1>
 
-        {/* Assignments */}
         <section>
           <h2 className="text-xl font-semibold mb-3">Assignments</h2>
           {assignments.length === 0 ? <p>No assignments found.</p> : (
@@ -337,7 +341,6 @@ export default async function ClassDashboard({ params }: { params: { classId: st
           )}
         </section>
 
-        {/* Meetings */}
         <section className="mt-10">
           <h2 className="text-xl font-semibold mb-4">Meetings</h2>
           {meetings.length === 0 ? <p>No meetings scheduled.</p> : (
@@ -345,17 +348,17 @@ export default async function ClassDashboard({ params }: { params: { classId: st
               {meetings.map(m => {
                 const { meetingNumber, password } = extractMeetingNumberAndPwd(m.meetingLink || "");
                 return (
-                  <div key={m._id} className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300">
+                  <div key={m._id} className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow">
                     <p className="text-lg font-bold text-yellow-300 mb-2">{m.date} @ {m.time}</p>
-                    <p><span className="font-semibold">Created By:</span> {m.createdBy}</p>
-                    <p><span className="font-semibold">Created At:</span> {new Date(m.createdAt).toLocaleString()}</p>
-                    <a href={m.meetingLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">Open in Zoom</a>
-                    {/* Zoom Inline Join - Client Component */}
+                    <p><strong>Created By:</strong> {m.createdBy}</p>
+                    <p><strong>Created At:</strong> {new Date(m.createdAt).toLocaleString()}</p>
+                    <a href={m.meetingLink} target="_blank" className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow">Open in Zoom</a>
+
                     <div className="mt-3">
                       <ZoomInlineJoiner
                         meetingId={meetingNumber}
                         meetingPassword={password}
-                        userName="Student Name" // replace with session user
+                        userName="Student Name"
                         userEmail="student@example.com"
                         classId={classId}
                         dbMeetingId={m._id}
@@ -369,7 +372,6 @@ export default async function ClassDashboard({ params }: { params: { classId: st
             </div>
           )}
         </section>
-
       </div>
     </div>
   );
