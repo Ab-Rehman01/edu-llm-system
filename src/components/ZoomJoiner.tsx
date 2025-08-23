@@ -2,81 +2,50 @@
 //ZoominL=linejoiner.tsx
 "use client";
 
-import { useEffect, useRef } from "react";
-import ZoomMtgEmbedded from "@zoom/meetingsdk/embedded";
+"use client";
+import { useEffect } from "react";
 
-type Props = {
-  meetingNumber: string;
-  password?: string;
-  userName: string;
-  userEmail?: string;
-};
+declare global {
+  interface Window {
+    ZoomMtgEmbedded: any;
+  }
+}
 
-export default function ZoomJoiner({
-  meetingNumber,
-  password,
-  userName,
-  userEmail,
-}: Props) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const clientRef = useRef<any>(null);
-
+export default function ZoomJoiner({ meetingNumber, userName }: { meetingNumber: string; userName: string }) {
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    const initZoom = async () => {
+      const role = 0; // 0 = attendee, 1 = host
 
-    async function init() {
-      if (!containerRef.current) return;
+      // 1. Get signature from API
+      const res = await fetch("/api/zoom/signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ meetingNumber, role }),
+      });
+      const { signature } = await res.json();
 
-      try {
-        // 🔑 Get signature from backend
-        const res = await fetch("/api/zoom/signature", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ meetingNumber, role: 0 }), // role 0 = attendee
-        });
+      const sdkKey = process.env.NEXT_PUBLIC_ZOOM_SDK_KEY!;
 
-        const { signature } = await res.json();
+      // 2. Load Zoom SDK
+      const client = window.ZoomMtgEmbedded.createClient();
 
-        // Create Zoom client
-        const client = ZoomMtgEmbedded.createClient();
-        clientRef.current = client;
+      let meetingSDKElement = document.getElementById("meetingSDKElement");
+      client.init({ zoomAppRoot: meetingSDKElement, language: "en-US" });
 
-        await client.init({
-          zoomAppRoot: containerRef.current,
-          language: "en-US",
-          patchJsMedia: true,
-        });
-
-        await client.join({
-          signature,
-          sdkKey: process.env.NEXT_PUBLIC_ZOOM_SDK_KEY!,
-          meetingNumber,
-          password,
-          userName,
-          userEmail,
-        });
-      } catch (err) {
-        console.error("Zoom init/join failed:", err);
-      }
-    }
-
-    init();
-
-    // Cleanup on unmount
-    return () => {
-      if (clientRef.current) {
-        clientRef.current.leave();
-      }
+      // 3. Join Meeting
+      await client.join({
+        sdkKey,
+        signature,
+        meetingNumber,
+        password: "",
+        userName,
+      });
     };
-  }, [meetingNumber, password, userName, userEmail]);
 
-  return (
-    <div
-      ref={containerRef}
-      id="zoom-container"
-      className="w-full h-[80vh] bg-black rounded-2xl overflow-hidden"
-    />
-  );
+    initZoom();
+  }, [meetingNumber, userName]);
+
+  return <div id="meetingSDKElement" style={{ width: "100%", height: "600px" }} />;
 }
 // "use client";
 
