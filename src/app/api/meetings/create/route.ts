@@ -23,6 +23,8 @@ export async function POST(req: Request) {
     );
 
     const tokenData = await tokenRes.json();
+    console.log("ZOOM TOKEN RESPONSE ===>", tokenData);  // 👈 debug
+
     if (!tokenData.access_token) {
       throw new Error("Failed to get Zoom access token");
     }
@@ -37,9 +39,9 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         topic: `Class Meeting - ${date} ${time}`,
-        type: 2, // scheduled meeting
-        start_time: `${date}T${time}:00Z`, // UTC time format
-        duration: 60, // default 1 hour
+        type: 2,
+        start_time: `${date}T${time}:00Z`,
+        duration: 60,
         settings: {
           host_video: true,
           participant_video: true,
@@ -48,37 +50,29 @@ export async function POST(req: Request) {
     });
 
     const meetingData = await meetingRes.json();
+    console.log("ZOOM MEETING RESPONSE ===>", meetingData);  // 👈 debug
+
     if (!meetingData.join_url) {
-      console.error("Zoom API error:", meetingData);
       throw new Error("Failed to create Zoom meeting");
     }
 
     // 3. Save in MongoDB
-    // const result = await db.collection("meetings").insertOne({
-    //   classId,
-    //   date,
-    //   time,
-    //   meetingId: meetingData.id,
-    //   joinUrl: meetingData.join_url,
-    //   startUrl: meetingData.start_url,
-    //   createdBy,
-    //   createdAt: new Date(),
-    // });
-
     const result = await db.collection("meetings").insertOne({
-  classId: "test-class",
-  date: "2025-08-24",
-  time: "11:01",
-  meetingLink: "https://zoom.us/j/123456",
-  createdBy: "admin",
-  createdAt: new Date(),
-});
+      classId,
+      date,
+      time,
+      meetingId: meetingData.id,
+      joinUrl: meetingData.join_url,
+      startUrl: meetingData.start_url,
+      createdBy,
+      createdAt: new Date(),
+    });
 
-    return NextResponse.json({ success: true, id: result.insertedId });
-  } catch (error) {
-    console.error(error);
+    return NextResponse.json({ success: true, id: result.insertedId, meetingData });
+  } catch (error: any) {
+    console.error("MEETING CREATE ERROR ===>", error);
     return NextResponse.json(
-      { success: false, error: "Failed to create meeting" },
+      { success: false, error: error.message || "Failed to create meeting" },
       { status: 500 }
     );
   }
