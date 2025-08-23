@@ -2,6 +2,7 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import ZoomJoiner from "@/components/ZoomJoiner";
 
 type Assignment = {
   _id: string;
@@ -16,7 +17,7 @@ type Meeting = {
   date: string;
   time: string;
   meetingLink: string;
-    createdBy: string;
+  createdBy: string;
   createdAt: string;
 };
 
@@ -29,8 +30,8 @@ export default function StudentDashboard() {
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
 
   const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
-  const backgroundImage = "/pexels-hai-nguyen-825252-1699414.jpg";
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   useEffect(() => {
     if (status === "loading") return;
@@ -101,33 +102,25 @@ export default function StudentDashboard() {
           <p>No meetings scheduled.</p>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {meetings.map(m => (
-              <div
-                key={m._id}
-                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
-              >
-                <p className="text-lg font-bold text-yellow-300 mb-2">
-                  {m.date} @ {m.time}
-                </p>
-                <p>
-                  <span className="font-semibold">Created By:</span>{" "}
-                  {m.createdBy || "Admin"}
-                </p>
-                <p>
-                  <span className="font-semibold">Created At:</span>{" "}
-                  {new Date(m.createdAt).toLocaleString()}
-                </p>
-                <a
-                  href={m.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+            {selectedMeeting && (
+              <div className="mt-10">
+                <h2 className="text-xl font-semibold mb-4">
+                  Joining Meeting: {selectedMeeting.date} @ {selectedMeeting.time}
+                </h2>
+                <ZoomJoiner
+                  meetingNumber={extractMeetingId(selectedMeeting.meetingLink)}
+                  password={extractPassword(selectedMeeting.meetingLink)}
+                  userName={session?.user?.name || "Student"}
+                  userEmail={session?.user?.email || ""}
+                />
+                <button
+                  onClick={() => setSelectedMeeting(null)}
+                  className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
                 >
-                  Join Meeting
-                </a>
+                  Close Meeting
+                </button>
               </div>
-            ))}
-          </div>
+            )} </div>
         )}
       </section>
 
