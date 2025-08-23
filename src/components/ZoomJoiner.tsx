@@ -1,6 +1,5 @@
 
-//ZoominL=linejoiner.tsx
-"use client";
+//components/Zoomjoiner.tsx
 
 "use client";
 import { useEffect } from "react";
@@ -10,13 +9,22 @@ declare global {
     ZoomMtgEmbedded: any;
   }
 }
-
-export default function ZoomJoiner({ meetingNumber, userName }: { meetingNumber: string; userName: string }) {
+export default function ZoomJoiner({
+  meetingNumber,
+  password,
+  userName,
+  userEmail,
+}: {
+  meetingNumber: string;
+  password?: string;
+  userName: string;
+  userEmail?: string;
+}) {
   useEffect(() => {
     const initZoom = async () => {
-      const role = 0; // 0 = attendee, 1 = host
+      const role = 0; // attendee
 
-      // 1. Get signature from API
+      // 1. Signature backend se
       const res = await fetch("/api/zoom/signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -25,28 +33,28 @@ export default function ZoomJoiner({ meetingNumber, userName }: { meetingNumber:
       const { signature } = await res.json();
 
       const sdkKey = process.env.NEXT_PUBLIC_ZOOM_SDK_KEY!;
-
-      // 2. Load Zoom SDK
       const client = window.ZoomMtgEmbedded.createClient();
 
       let meetingSDKElement = document.getElementById("meetingSDKElement");
       client.init({ zoomAppRoot: meetingSDKElement, language: "en-US" });
 
-      // 3. Join Meeting
+      // 2. Meeting join
       await client.join({
         sdkKey,
         signature,
         meetingNumber,
-        password: "",
+        password: password || "",   // yahan auto password chala jayega
         userName,
+        userEmail,
       });
     };
 
     initZoom();
-  }, [meetingNumber, userName]);
+  }, [meetingNumber, password, userName, userEmail]);
 
   return <div id="meetingSDKElement" style={{ width: "100%", height: "600px" }} />;
 }
+
 // "use client";
 
 // import { useEffect, useRef, useState } from "react";
