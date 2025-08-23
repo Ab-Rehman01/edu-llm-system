@@ -2,7 +2,10 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import ZoomJoiner from "@/components/ZoomJoiner";
+import dynamic from "next/dynamic";
+const ZoomJoiner = dynamic(() => import("@/components/ZoomJoiner"), {
+  ssr: false,
+});
 
 type Assignment = {
   _id: string;

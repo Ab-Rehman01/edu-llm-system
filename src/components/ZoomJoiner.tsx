@@ -1,6 +1,5 @@
 
 //ZoominL=linejoiner.tsx
-
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -15,49 +14,59 @@ type Props = {
 
 export default function ZoomJoiner({
   meetingNumber,
-  password = "",
+  password,
   userName,
   userEmail,
 }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const clientRef = useRef<any>(null);
 
   useEffect(() => {
-    let client: any;
+    if (typeof window === "undefined") return;
 
     async function init() {
       if (!containerRef.current) return;
 
-      // 🔑 get signature from backend
-      const res = await fetch("/api/zoom/signature", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meetingNumber, role: 0 }),
-      });
+      try {
+        // 🔑 Get signature from backend
+        const res = await fetch("/api/zoom/signature", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meetingNumber, role: 0 }), // role 0 = attendee
+        });
 
-      const { signature } = await res.json();
+        const { signature } = await res.json();
 
-      client = ZoomMtgEmbedded.createClient();
+        // Create Zoom client
+        const client = ZoomMtgEmbedded.createClient();
+        clientRef.current = client;
 
-      await client.init({
-        zoomAppRoot: containerRef.current,
-        language: "en-US",
-        patchJsMedia: true,
-      });
+        await client.init({
+          zoomAppRoot: containerRef.current,
+          language: "en-US",
+          patchJsMedia: true,
+        });
 
-      await client.join({
-        signature,
-        sdkKey: process.env.NEXT_PUBLIC_ZOOM_SDK_KEY,
-        meetingNumber,
-        password,
-        userName,
-        userEmail,
-      });
+        await client.join({
+          signature,
+          sdkKey: process.env.NEXT_PUBLIC_ZOOM_SDK_KEY!,
+          meetingNumber,
+          password,
+          userName,
+          userEmail,
+        });
+      } catch (err) {
+        console.error("Zoom init/join failed:", err);
+      }
     }
 
     init();
 
+    // Cleanup on unmount
     return () => {
-      client?.leave?.();
+      if (clientRef.current) {
+        clientRef.current.leave();
+      }
     };
   }, [meetingNumber, password, userName, userEmail]);
 
@@ -69,7 +78,6 @@ export default function ZoomJoiner({
     />
   );
 }
-
 // "use client";
 
 // import { useEffect, useRef, useState } from "react";
