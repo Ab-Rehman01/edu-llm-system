@@ -57,16 +57,16 @@ export async function POST(req: Request) {
     }
 
     // 3. Save in MongoDB
-    const result = await db.collection("meetings").insertOne({
-      classId,
-      date,
-      time,
-      meetingId: meetingData.id,
-      joinUrl: meetingData.join_url,
-      startUrl: meetingData.start_url,
-      createdBy,
-      createdAt: new Date(),
-    });
+   const result = await db.collection("meetings").insertOne({
+  classId,
+  date,
+  time,
+  meetingId: String(meetingData.id),   // 👈 convert to string
+  joinUrl: meetingData.join_url,
+  startUrl: meetingData.start_url,
+  createdBy,
+  createdAt: new Date(),
+});
 
     return NextResponse.json({ success: true, id: result.insertedId, meetingData });
   } catch (error: any) {
