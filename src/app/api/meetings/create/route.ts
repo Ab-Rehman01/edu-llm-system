@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     const accessToken = tokenData.access_token;
 
     // 2. Create Meeting via Zoom API
+    
     const startTime = new Date(`${date}T${time}:00`).toISOString();
     const meetingRes = await fetch("https://api.zoom.us/v2/users/me/meetings", {
       method: "POST",
@@ -49,10 +50,14 @@ export async function POST(req: Request) {
         },
       }),
     });
-
     const meetingData = await meetingRes.json();
-    console.log("ZOOM MEETING RESPONSE ===>", meetingData);  // 👈 debug
 
+if (!meetingData.join_url) {
+  console.error("Zoom API error:", meetingData);  // 👈 yahan log karo
+  throw new Error("Failed to create Zoom meeting");
+}
+
+  
     if (!meetingData.join_url) {
       throw new Error("Failed to create Zoom meeting");
     }
