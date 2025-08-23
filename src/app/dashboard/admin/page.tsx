@@ -1,4 +1,5 @@
 //dashboard/admin/page.tsx
+// dashboard/admin/page.tsx
 "use client";
 
 import AssignmentUpload from "@/components/AssignmentUpload";
@@ -9,37 +10,37 @@ type User = {
   name: string;
   email: string;
   role: string;
-  classId?: string;  // Add classId here
+  classId?: string;
 };
 
 type ClassItem = {
   _id: string;
   name: string;
 };
+
 type Meeting = {
   _id: string;
   classId: string;
   date: string;
   time: string;
-  meetingLink: string;
+  topic: string;
+  joinUrl: string;
 };
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
-  
-  
-   
+
   const [meeting, setMeeting] = useState({
     classId: "",
     date: "",
     time: "",
-    meetingLink: "",
+    topic: "",
   });
 
   const createMeeting = async () => {
-    await fetch("/api/meetings/create", {
+    const res = await fetch("/api/meetings/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -47,57 +48,65 @@ export default function AdminDashboard() {
         createdBy: "admin", // TODO: actual logged-in admin ka ID dalna
       }),
     });
-    alert("Meeting Created Successfully!");
-    setMeeting({ classId: "", date: "", time: "", meetingLink: "" }); // reset form
-  
-  
-  };
 
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Zoom Meeting Created Successfully!");
+      setMeeting({ classId: "", date: "", time: "", topic: "" }); // reset form
+    } else {
+      alert("Error creating meeting: " + data.error);
+    }
+  };
 
   // Fetch users
   useEffect(() => {
     fetch("/api/users/list")
-      .then(res => res.json())
-      .then(data => setUsers(data.users || data));
+      .then((res) => res.json())
+      .then((data) => setUsers(data.users || data));
   }, []);
 
   // Fetch classes
   useEffect(() => {
     fetch("/api/classes/list")
-      .then(res => res.json())
-      .then(data => setClasses(data.classes || []));
+      .then((res) => res.json())
+      .then((data) => setClasses(data.classes || []));
   }, []);
 
-  // meetings list ke liye state
-const [meetings, setMeetings] = useState<Meeting[]>([]);
+  // Meetings list ke liye state
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
 
-// fetch meetings
-useEffect(() => {
-  fetch("/api/meetings/list?classId=" + (selectedClassId || classes[0]?._id || ""))
-    .then(res => res.json())
-    .then(data => {
-      console.log("Meetings fetched:", data); // debug
-      setMeetings(data.meetings || []);
-});
-}, [selectedClassId, classes]);
-
+  // fetch meetings
+  useEffect(() => {
+    if (classes.length === 0) return;
+    fetch(
+      "/api/meetings/list?classId=" +
+        (selectedClassId || classes[0]?._id || "")
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Meetings fetched:", data); // debug
+        setMeetings(data.meetings || []);
+      });
+  }, [selectedClassId, classes]);
 
   // Update user role or class
-  const updateUser = async (userId: string, updates: Partial<{ role: string; classId: string }>) => {
-  await fetch("/api/users/update", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, ...updates }),
-  });
+  const updateUser = async (
+    userId: string,
+    updates: Partial<{ role: string; classId: string }>
+  ) => {
+    await fetch("/api/users/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, ...updates }),
+    });
 
-  setUsers(users.map(u => (u._id === userId ? { ...u, ...updates } : u)));
-};
-
-  
+    setUsers(users.map((u) => (u._id === userId ? { ...u, ...updates } : u)));
+  };
 
   // Redirect admin to selected class page
   const goToClassPage = (classId: string) => {
-    window.location.href = `/dashboard/class/${classId}`; // Or use router.push if using Next.js router
+    window.location.href = `/dashboard/class/${classId}`;
   };
 
   return (
@@ -116,14 +125,16 @@ useEffect(() => {
           </tr>
         </thead>
         <tbody>
-          {users.map(user => (
+          {users.map((user) => (
             <tr key={user._id}>
               <td className="border p-2">{user.name}</td>
               <td className="border p-2">{user.email}</td>
               <td className="border p-2">
                 <select
                   value={user.role}
-                  onChange={e => updateUser(user._id, { role: e.target.value })}
+                  onChange={(e) =>
+                    updateUser(user._id, { role: e.target.value })
+                  }
                   className="border p-1"
                 >
                   <option value="student">Student</option>
@@ -134,12 +145,16 @@ useEffect(() => {
               <td className="border p-2">
                 <select
                   value={user.classId || ""}
-                  onChange={e => updateUser(user._id, { classId: e.target.value })}
+                  onChange={(e) =>
+                    updateUser(user._id, { classId: e.target.value })
+                  }
                   className="border p-1"
                 >
                   <option value="">No Class</option>
-                  {classes.map(cls => (
-                    <option key={cls._id} value={cls._id}>{cls.name}</option>
+                  {classes.map((cls) => (
+                    <option key={cls._id} value={cls._id}>
+                      {cls.name}
+                    </option>
                   ))}
                 </select>
               </td>
@@ -150,13 +165,16 @@ useEffect(() => {
       </table>
 
       {/* Assignment Upload */}
-      <AssignmentUpload role="admin" classId={selectedClassId || classes[0]?._id || ""} />
+      <AssignmentUpload
+        role="admin"
+        classId={selectedClassId || classes[0]?._id || ""}
+      />
 
       {/* Classes List */}
       <div className="mt-6">
         <h2 className="text-xl font-bold mb-2">Classes</h2>
         <ul>
-          {classes.map(cls => (
+          {classes.map((cls) => (
             <li
               key={cls._id}
               onClick={() => goToClassPage(cls._id)}
@@ -167,53 +185,76 @@ useEffect(() => {
           ))}
         </ul>
       </div>
-      
-  
-       
 
-      {/* tumhara purana dashboard code */}
-
-      {/* Zoom Link / Meeting Form */}
+      {/* Zoom Meeting Form */}
       <div className="mt-6 border p-4 rounded">
-        <h2 className="text-xl font-bold mb-2">Create Class Meeting</h2>
+        <h2 className="text-xl font-bold mb-2">Create Zoom Class Meeting</h2>
         <select
           className="border p-2 mb-2 w-full"
           value={meeting.classId}
-          onChange={(e) => setMeeting({ ...meeting, classId: e.target.value })}
+          onChange={(e) =>
+            setMeeting({ ...meeting, classId: e.target.value })
+          }
         >
           <option value="">Select Class</option>
           {classes.map((cls) => (
-            <option key={cls._id} value={cls._id}>{cls.name}</option>
+            <option key={cls._id} value={cls._id}>
+              {cls.name}
+            </option>
           ))}
         </select>
+        <input
+          type="text"
+          placeholder="Meeting Topic"
+          className="border p-2 mb-2 w-full"
+          value={meeting.topic}
+          onChange={(e) =>
+            setMeeting({ ...meeting, topic: e.target.value })
+          }
+        />
         <input
           type="date"
           className="border p-2 mb-2 w-full"
           value={meeting.date}
-          onChange={(e) => setMeeting({ ...meeting, date: e.target.value })}
+          onChange={(e) =>
+            setMeeting({ ...meeting, date: e.target.value })
+          }
         />
         <input
           type="time"
           className="border p-2 mb-2 w-full"
           value={meeting.time}
-          onChange={(e) => setMeeting({ ...meeting, time: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Meeting Link"
-          className="border p-2 mb-2 w-full"
-          value={meeting.meetingLink}
-          onChange={(e) => setMeeting({ ...meeting, meetingLink: e.target.value })}
+          onChange={(e) =>
+            setMeeting({ ...meeting, time: e.target.value })
+          }
         />
         <button
           onClick={createMeeting}
           className="bg-blue-600 text-white px-4 py-2 rounded"
         >
-          Create Meeting
+          Create Zoom Meeting
         </button>
       </div>
-    
 
+      {/* Meetings List */}
+      <div className="mt-6">
+        <h2 className="text-xl font-bold mb-2">Meetings</h2>
+        <ul>
+          {meetings.map((m) => (
+            <li key={m._id} className="mb-2">
+              <span className="font-semibold">{m.topic}</span> -{" "}
+              {m.date} {m.time} -{" "}
+              <a
+                href={m.joinUrl}
+                target="_blank"
+                className="text-blue-600 underline"
+              >
+                Join Link
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
