@@ -1,4 +1,3 @@
-//dashboard/admin/page.tsx
 "use client";
 
 import AssignmentUpload from "@/components/AssignmentUpload";
@@ -16,6 +15,7 @@ type ClassItem = {
   _id: string;
   name: string;
 };
+
 type Meeting = {
   _id: string;
   classId: string;
@@ -26,7 +26,6 @@ type Meeting = {
   joinUrlJitsi?: string;
 };
 
-
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -34,20 +33,13 @@ export default function AdminDashboard() {
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [newMeeting, setNewMeeting] = useState({
-  topic: "",
-  joinUrlZoom: "",
-  joinUrlJitsi: "",
-  date: "",
-  time: "",
-});
-
-
-  // const [newMeeting, setNewMeeting] = useState({
-  //   topic: "",
-  //   joinUrl: "",
-  //   date: "",
-  //   time: "",
-  // });
+    topic: "",
+    platform: "zoom", // default
+    joinUrlZoom: "",
+    joinUrlJitsi: "",
+    date: "",
+    time: "",
+  });
 
   // Fetch users
   useEffect(() => {
@@ -86,32 +78,51 @@ export default function AdminDashboard() {
       body: JSON.stringify({ userId, ...updates }),
     });
 
-    setUsers(
-      users.map((u) => (u._id === userId ? { ...u, ...updates } : u))
-    );
+    setUsers(users.map((u) => (u._id === userId ? { ...u, ...updates } : u)));
   };
 
-  
-  // Save new Zoom meeting link
- const saveMeeting = async () => {
-  if (!newMeeting.topic || (!newMeeting.joinUrlZoom && !newMeeting.joinUrlJitsi)) {
-    alert("Please enter topic and at least one join link (Zoom or Jitsi).");
-    return;
-  }
+  // Save new meeting
+  const saveMeeting = async () => {
+    if (!newMeeting.topic) {
+      alert("Please enter meeting topic.");
+      return;
+    }
 
-     await fetch("/api/meetings/add", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...newMeeting, classId: selectedClassId }),
-  });
+    if (
+      newMeeting.platform === "zoom" &&
+      !newMeeting.joinUrlZoom.trim()
+    ) {
+      alert("Please enter Zoom join link.");
+      return;
+    }
 
-   setNewMeeting({ topic: "", joinUrlZoom: "", joinUrlJitsi: "", date: "", time: "" });
+    if (
+      newMeeting.platform === "jitsi" &&
+      !newMeeting.joinUrlJitsi.trim()
+    ) {
+      alert("Please enter Jitsi join link.");
+      return;
+    }
+
+    await fetch("/api/meetings/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newMeeting, classId: selectedClassId }),
+    });
+
+    setNewMeeting({
+      topic: "",
+      platform: "zoom",
+      joinUrlZoom: "",
+      joinUrlJitsi: "",
+      date: "",
+      time: "",
+    });
 
     // Refresh meetings
-    // refresh list
-  const res = await fetch("/api/meetings/list?classId=" + selectedClassId);
-  const data = await res.json();
-  setMeetings(data.meetings || []);
+    const res = await fetch("/api/meetings/list?classId=" + selectedClassId);
+    const data = await res.json();
+    setMeetings(data.meetings || []);
   };
 
   return (
@@ -191,80 +202,113 @@ export default function AdminDashboard() {
         </select>
       </div>
 
-      {/* Add Zoom Meeting Link */}
-<div className="mt-6 border p-4 rounded">
-  <h2 className="text-xl font-bold mb-2">Add Meeting</h2>
+      {/* Add Meeting */}
+      <div className="mt-6 border p-4 rounded">
+        <h2 className="text-xl font-bold mb-2">Add Meeting</h2>
 
-  <input
-    type="text"
-    placeholder="Meeting Topic"
-    className="border p-2 mb-2 w-full"
-    value={newMeeting.topic}
-    onChange={(e) => setNewMeeting({ ...newMeeting, topic: e.target.value })}
-  />
+        <input
+          type="text"
+          placeholder="Meeting Topic"
+          className="border p-2 mb-2 w-full"
+          value={newMeeting.topic}
+          onChange={(e) =>
+            setNewMeeting({ ...newMeeting, topic: e.target.value })
+          }
+        />
 
-  <input
-    type="text"
-    placeholder="Zoom Join URL"
-    className="border p-2 mb-2 w-full"
-    value={newMeeting.joinUrlZoom}
-    onChange={(e) => setNewMeeting({ ...newMeeting, joinUrlZoom: e.target.value })}
-  />
+        <select
+          className="border p-2 mb-2 w-full"
+          value={newMeeting.platform}
+          onChange={(e) =>
+            setNewMeeting({ ...newMeeting, platform: e.target.value })
+          }
+        >
+          <option value="zoom">Zoom</option>
+          <option value="jitsi">Jitsi</option>
+        </select>
 
-  <input
-    type="text"
-    placeholder="Jitsi Join URL"
-    className="border p-2 mb-2 w-full"
-    value={newMeeting.joinUrlJitsi}
-    onChange={(e) => setNewMeeting({ ...newMeeting, joinUrlJitsi: e.target.value })}
-  />
+        {newMeeting.platform === "zoom" && (
+          <input
+            type="text"
+            placeholder="Zoom Join URL"
+            className="border p-2 mb-2 w-full"
+            value={newMeeting.joinUrlZoom}
+            onChange={(e) =>
+              setNewMeeting({ ...newMeeting, joinUrlZoom: e.target.value })
+            }
+          />
+        )}
 
-  <input
-    type="date"
-    className="border p-2 mb-2 w-full"
-    value={newMeeting.date}
-    onChange={(e) => setNewMeeting({ ...newMeeting, date: e.target.value })}
-  />
+        {newMeeting.platform === "jitsi" && (
+          <input
+            type="text"
+            placeholder="Jitsi Join URL"
+            className="border p-2 mb-2 w-full"
+            value={newMeeting.joinUrlJitsi}
+            onChange={(e) =>
+              setNewMeeting({ ...newMeeting, joinUrlJitsi: e.target.value })
+            }
+          />
+        )}
 
-  <input
-    type="time"
-    className="border p-2 mb-2 w-full"
-    value={newMeeting.time}
-    onChange={(e) => setNewMeeting({ ...newMeeting, time: e.target.value })}
-  />
+        <input
+          type="date"
+          className="border p-2 mb-2 w-full"
+          value={newMeeting.date}
+          onChange={(e) =>
+            setNewMeeting({ ...newMeeting, date: e.target.value })
+          }
+        />
+        <input
+          type="time"
+          className="border p-2 mb-2 w-full"
+          value={newMeeting.time}
+          onChange={(e) =>
+            setNewMeeting({ ...newMeeting, time: e.target.value })
+          }
+        />
 
-  <button
-    onClick={saveMeeting}
-    className="bg-blue-600 text-white px-4 py-2 rounded"
-  >
-    Save Meeting
-  </button>
-</div>
+        <button
+          onClick={saveMeeting}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Save Meeting
+        </button>
+      </div>
 
       {/* Meetings List */}
-<div className="mt-6">
-  <h2 className="text-xl font-bold mb-2">Meetings</h2>
-  <ul>
-    {meetings.map((m) => (
-      <li key={m._id} className="mb-2">
-        <span className="font-semibold">{m.topic}</span> - {m.date} {m.time} —{" "}
-        {m.joinUrlZoom && (
-          <a href={m.joinUrlZoom} target="_blank" className="text-blue-600 underline">
-            Zoom
-          </a>
-        )}
-        {m.joinUrlJitsi && (
-          <>
-            {" | "}
-            <a href={m.joinUrlJitsi} target="_blank" className="text-green-600 underline">
-              Jitsi
-            </a>
-          </>
-        )}
-      </li>
-    ))}
-  </ul>
-</div>
+      <div className="mt-6">
+        <h2 className="text-xl font-bold mb-2">Meetings</h2>
+        <ul>
+          {meetings.map((m) => (
+            <li key={m._id} className="mb-2">
+              <span className="font-semibold">{m.topic}</span> - {m.date}{" "}
+              {m.time} —{" "}
+              {m.joinUrlZoom && (
+                <a
+                  href={m.joinUrlZoom}
+                  target="_blank"
+                  className="text-blue-600 underline"
+                >
+                  Zoom
+                </a>
+              )}
+              {m.joinUrlJitsi && (
+                <>
+                  {" | "}
+                  <a
+                    href={m.joinUrlJitsi}
+                    target="_blank"
+                    className="text-green-600 underline"
+                  >
+                    Jitsi
+                  </a>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

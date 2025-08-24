@@ -4,7 +4,7 @@ import clientPromise from "@/lib/mongodb";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { title, meetingNumber, password, type, startTime } = body;
+    const { title, type, meetingNumber, password, joinUrl, startTime } = body;
 
     if (!title || !type) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -15,10 +15,11 @@ export async function POST(req: Request) {
     const collection = db.collection("meetings");
 
     const meeting = {
-      title,
-      type, // "zoom" | "jitsi"
-      meetingNumber,
-      password,
+      title,                 // Meeting topic
+      type,                  // "zoom" | "jitsi"
+      meetingNumber: meetingNumber || null,
+      password: password || null,
+      joinUrl: joinUrl || null,  // <---- Add this for Zoom/Jitsi links
       startTime: startTime || new Date(),
       createdAt: new Date(),
     };
