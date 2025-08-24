@@ -1,10 +1,11 @@
+//app/api/meetings/add/route.tsx
 import clientPromise from "@/lib/mongodb";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { meetingNumber, password, topic, date, time, classId } = body;
+    const { meetingNumber, password, topic, date, time, classId, joinUrlZoom, joinUrlJitsi, createdBy } = body;
 
     if (!meetingNumber || !topic || !date || !time || !classId) {
       return NextResponse.json(
@@ -17,12 +18,15 @@ export async function POST(req: Request) {
     const db = client.db("education-system");
 
     const result = await db.collection("meetings").insertOne({
-      meetingNumber,
+      meetingNumber: meetingNumber || null,
       password: password || "",
       topic,
       date,
       time,
       classId,
+      joinUrlZoom: joinUrlZoom || null,
+      joinUrlJitsi: joinUrlJitsi || null,
+      createdBy: createdBy || "Admin",
       createdAt: new Date(),
     });
 
