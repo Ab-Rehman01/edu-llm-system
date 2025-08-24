@@ -1,14 +1,13 @@
-
-//components/Zoomjoiner.tsx
-
+// components/ZoomJoiner.tsx
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 declare global {
   interface Window {
     ZoomMtgEmbedded: any;
   }
 }
+
 export default function ZoomJoiner({
   meetingNumber,
   password,
@@ -20,6 +19,8 @@ export default function ZoomJoiner({
   userName: string;
   userEmail?: string;
 }) {
+  const [meetingStarted, setMeetingStarted] = useState(false);
+
   useEffect(() => {
     const initZoom = async () => {
       const role = 0; // attendee
@@ -35,25 +36,65 @@ export default function ZoomJoiner({
       const sdkKey = process.env.NEXT_PUBLIC_ZOOM_SDK_KEY!;
       const client = window.ZoomMtgEmbedded.createClient();
 
-      let meetingSDKElement = document.getElementById("meetingSDKElement");
-      client.init({ zoomAppRoot: meetingSDKElement, language: "en-US" });
+      const meetingSDKElement = document.getElementById("meetingSDKElement");
+      client.init({
+        zoomAppRoot: meetingSDKElement,
+        language: "en-US",
+        customize: {
+          // Placeholder height & style
+          meetingInfo: [
+            "topic",
+            "host",
+          ],
+        },
+      });
 
-      // 2. Meeting join
+      // 2. Join the meeting
       await client.join({
         sdkKey,
         signature,
         meetingNumber,
-        password: password || "",   // yahan auto password chala jayega
+        password: password || "",
         userName,
         userEmail,
+        success: () => setMeetingStarted(true),
+        error: (err: any) => console.error(err),
       });
     };
 
     initZoom();
   }, [meetingNumber, password, userName, userEmail]);
 
-  return <div id="meetingSDKElement" style={{ width: "100%", height: "600px" }} />;
+  return (
+    <div style={{ width: "100%", minHeight: "400px", position: "relative" }}>
+      {!meetingStarted && (
+        <div
+          style={{
+            width: "100%",
+            height: "400px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#000",
+            color: "#fff",
+            fontSize: "16px",
+          }}
+        >
+          Please wait for the meeting to start...
+        </div>
+      )}
+      <div
+        id="meetingSDKElement"
+        style={{
+          width: "100%",
+          height: meetingStarted ? "600px" : "0px",
+          transition: "height 0.5s ease",
+        }}
+      />
+    </div>
+  );
 }
+
 
 // "use client";
 
