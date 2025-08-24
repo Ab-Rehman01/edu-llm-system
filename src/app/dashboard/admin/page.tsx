@@ -1,3 +1,4 @@
+//dashboard/admin/page.tsx
 "use client";
 
 import AssignmentUpload from "@/components/AssignmentUpload";

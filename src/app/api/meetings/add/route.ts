@@ -1,21 +1,33 @@
-// src/app/api/meetings/add/route.ts
-import clientPromise from "@/lib/mongodb";
 import { NextResponse } from "next/server";
+import clientPromise from "@/lib/mongodb";
 
 export async function POST(req: Request) {
   try {
-    const data = await req.json(); // { classId, date, time, topic, joinUrl }
+    const body = await req.json();
+    const { title, meetingNumber, password, type, startTime } = body;
+
+    if (!title || !type) {
+      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
     const client = await clientPromise;
-    const db = client.db("education-system");
+    const db = client.db("meetingsDB");
+    const collection = db.collection("meetings");
 
-    const result = await db.collection("meetings").insertOne({
-      ...data,
+    const meeting = {
+      title,
+      type, // "zoom" | "jitsi"
+      meetingNumber,
+      password,
+      startTime: startTime || new Date(),
       createdAt: new Date(),
-    });
+    };
 
-    return NextResponse.json({ success: true, meetingId: result.insertedId });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ success: false, error: "Failed to save meeting" }, { status: 500 });
+    await collection.insertOne(meeting);
+
+    return NextResponse.json({ success: true, meeting });
+  } catch (error) {
+    console.error("Error adding meeting:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

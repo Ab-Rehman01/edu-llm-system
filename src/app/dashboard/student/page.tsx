@@ -1,13 +1,13 @@
-//dashboard/student/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
-const ZoomJoiner = dynamic(() => import("@/components/ZoomJoiner"), {
-  ssr: false,
-});
+// keep your Zoom SDK joiner (only works if you later add a paid Zoom account)
+const ZoomJoiner = dynamic(() => import("@/components/ZoomJoiner"), { ssr: false });
+// Jitsi embed (provided below)
+const JitsiEmbed = dynamic(() => import("@/components/JitsiEmbed"), { ssr: false });
 
 type Assignment = {
   _id: string;
@@ -20,81 +20,114 @@ type Assignment = {
 type Meeting = {
   _id: string;
   classId: string;
-  date: string;
-  time: string;
-  joinUrl: string;
-  createdBy: string;
-  createdAt: string;
+  topic?: string;
+  date: string;         // "YYYY-MM-DD"
+  time: string;         // "HH:mm" 24h
+  joinUrl?: string;     // existing Zoom field
+  joinUrlZoom?: string; // optional
+  joinUrlJitsi?: string;// NEW
+  createdBy?: string;
+  createdAt?: string;
 };
+
+type Platform = "zoom" | "jitsi" | null;
 
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [classes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-
-  const [selectedClassId, setSelectedClassId] = useState<string>("");
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Countdown timer state
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
+
+  // countdown + attendance timers
   const [countdown, setCountdown] = useState<number | null>(null);
+  const joinStartedAtRef = useRef<Date | null>(null);
 
-  // Fetch assignments
+  // --- Fetch assignments ---
   useEffect(() => {
-    if (status === "loading") return;
-    if (status !== "authenticated") return;
-    if (!session?.user?.classId) return;
-
+    if (status !== "authenticated" || !session?.user?.classId) return;
     fetch(`/api/assignments/list?classId=${session.user.classId}`)
-      .then(res => res.json())
-      .then(data => {
-        setAssignments(data.assignments || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      .then((res) => res.json())
+      .then((data) => setAssignments(data.assignments || []))
+      .finally(() => setLoading(false));
   }, [status, session]);
 
-  // Fetch meetings
+  // --- Fetch meetings (class-scoped) ---
   useEffect(() => {
     if (!session?.user?.classId) return;
-
-    fetch("/api/meetings/list?classId=" + session.user.classId)
-      .then(res => res.json())
-      .then(data => setMeetings(data.meetings || []))
-      .catch(err => console.error("Error fetching meetings", err));
+    fetch(`/api/meetings/list?classId=${session.user.classId}`)
+      .then((res) => res.json())
+      .then((data) => setMeetings(data.meetings || []))
+      .catch((e) => console.error("Error fetching meetings", e));
   }, [session]);
 
-  // Setup countdown timer for selected meeting
-  useEffect(() => {
-    if (!selectedMeeting) return;
-
-    const meetingTime = new Date(`${selectedMeeting.date}T${selectedMeeting.time}`);
-    const now = new Date();
-    const secondsLeft = Math.floor((meetingTime.getTime() - now.getTime()) / 1000);
-
-    if (secondsLeft > 0) {
-      setCountdown(secondsLeft);
-
-      const interval = setInterval(() => {
-        setCountdown(prev => {
-          if (!prev || prev <= 1) {
-            clearInterval(interval);
-            return null;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(interval);
-    } else {
-      setCountdown(0);
-    }
+  // compute Date of selected meeting
+  const selectedMeetingDate = useMemo(() => {
+    if (!selectedMeeting) return null;
+    // Ensure we build a proper ISO timestamp using local timezone
+    // Fallback to simple `${date}T${time}` if time-zone handling is fine for you.
+    return new Date(`${selectedMeeting.date}T${selectedMeeting.time}:00`);
   }, [selectedMeeting]);
+
+  // Countdown tick
+  useEffect(() => {
+    if (!selectedMeetingDate) return;
+
+    const tick = () => {
+      const now = new Date();
+      const diffSec = Math.floor((selectedMeetingDate.getTime() - now.getTime()) / 1000);
+      setCountdown(diffSec > 0 ? diffSec : 0);
+    };
+
+    tick(); // initial
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [selectedMeetingDate]);
+
+  // Attendance save helper (single insert that includes both join+leave)
+  async function saveAttendance(leaveNow = false) {
+    if (!selectedMeeting || !session?.user) return;
+    const classId = session.user.classId;
+    const userId =
+      // pick whatever you actually expose in session
+      // (adjust if your NextAuth session uses a different key)
+      (session.user as any)._id || (session.user as any).id || session.user.email;
+
+    const joinTime = joinStartedAtRef.current || new Date();
+    const leaveTime = leaveNow ? new Date() : undefined;
+    const durationMs = leaveNow ? (new Date().getTime() - joinTime.getTime()) : undefined;
+
+    try {
+      await fetch("/api/meetings/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingId: selectedMeeting._id,
+          classId,
+          userId,
+          joinTime: joinTime.toISOString(),
+          leaveTime: leaveTime ? leaveTime.toISOString() : null,
+          durationMs: durationMs ?? null,
+        }),
+      });
+    } catch (e) {
+      console.error("attendance post failed", e);
+    }
+  }
+
+  // Before unload/close – try to record leave
+  useEffect(() => {
+    const handler = () => saveAttendance(true);
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [selectedMeeting, session]); // rebind when meeting/session changes
 
   if (loading) return <p>Loading assignments...</p>;
 
+  // --------- helpers ----------
   const getFileIcon = (url: string) => {
     if (url.endsWith(".pdf")) return "📄";
     if (url.match(/\.(jpg|jpeg|png|gif)$/)) return "🖼️";
@@ -102,8 +135,10 @@ export default function StudentDashboard() {
     return "📎";
   };
 
-  const extractMeetingId = (url: string) => {
+  // parse Zoom meeting id/pwd from url
+  const extractMeetingId = (url?: string) => {
     try {
+      if (!url) return "";
       const match = url.match(/\/j\/(\d+)/);
       return match ? match[1] : "";
     } catch {
@@ -111,8 +146,9 @@ export default function StudentDashboard() {
     }
   };
 
-  const extractPassword = (url: string) => {
+  const extractPassword = (url?: string) => {
     try {
+      if (!url) return "";
       const params = new URL(url).searchParams;
       return params.get("pwd") || "";
     } catch {
@@ -120,21 +156,41 @@ export default function StudentDashboard() {
     }
   };
 
+  // Which zoom URL to use
+  const effectiveZoomUrl = (m?: Meeting) => m?.joinUrlZoom || m?.joinUrl || "";
+
+  // On click join with specific platform
+  const handleJoin = (m: Meeting, platform: Platform) => {
+    setSelectedMeeting(m);
+    setSelectedPlatform(platform);
+    joinStartedAtRef.current = new Date(); // start timing
+  };
+
+  const handleClose = async () => {
+    await saveAttendance(true);
+    setSelectedMeeting(null);
+    setSelectedPlatform(null);
+    joinStartedAtRef.current = null;
+    setCountdown(null);
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Student Dashboard</h1>
+
+      {/* Assignments */}
       <h2 className="mb-4">Assignments for your class</h2>
-
       {assignments.length === 0 && <p>No assignments found.</p>}
-
       <ul className="space-y-3">
-        {assignments.map(a => (
+        {assignments.map((a) => (
           <li key={a._id} className="border p-3 rounded flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-2xl">{getFileIcon(a.url)}</span>
               <div>
                 <strong>Subject:</strong> {a.subject} <br />
-                <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
+                <strong>Uploaded:</strong>{" "}
+                {new Date(a.uploadedAt).toLocaleString()}{" "}
+                <br />
                 <button
                   onClick={() => setSelectedAssignment(a)}
                   className="text-blue-600 hover:underline mt-1"
@@ -147,55 +203,96 @@ export default function StudentDashboard() {
         ))}
       </ul>
 
-      {/* Meetings Section */}
+      {/* Meetings */}
       <section className="mt-10">
         <h2 className="text-xl font-semibold mb-4">Meetings</h2>
         {meetings.length === 0 ? (
           <p>No meetings scheduled.</p>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {meetings.map(m => (
-              <div
-                key={m._id}
-                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
-              >
-                <p className="text-lg font-bold text-yellow-300 mb-2">
-                  {m.date} @ {m.time}
-                </p>
-                <p>
-                  <span className="font-semibold">Created By:</span> {m.createdBy}
-                </p>
-                <p>
-                  <span className="font-semibold">Created At:</span>{" "}
-                  {new Date(m.createdAt).toLocaleString()}
-                </p>
-                <button
-                  onClick={() => setSelectedMeeting(m)}
-                  className="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+            {meetings.map((m) => {
+              const hasZoom = !!effectiveZoomUrl(m);
+              const hasJitsi = !!m.joinUrlJitsi;
+
+              return (
+                <div
+                  key={m._id}
+                  className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
                 >
-                  Join Meeting
-                </button>
-              </div>
-            ))}
+                  <p className="text-lg font-bold text-yellow-300 mb-2">
+                    {(m.topic || "Class Meeting")} — {m.date} @ {m.time}
+                  </p>
+                  {m.createdBy && (
+                    <p>
+                      <span className="font-semibold">Created By:</span>{" "}
+                      {m.createdBy}
+                    </p>
+                  )}
+                  {m.createdAt && (
+                    <p>
+                      <span className="font-semibold">Created At:</span>{" "}
+                      {new Date(m.createdAt).toLocaleString()}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {hasZoom && (
+                      <button
+                        onClick={() => handleJoin(m, "zoom")}
+                        className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+                      >
+                        Join via Zoom
+                      </button>
+                    )}
+                    {hasJitsi && (
+                      <button
+                        onClick={() => handleJoin(m, "jitsi")}
+                        className="inline-block bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition"
+                      >
+                        Join via Jitsi
+                      </button>
+                    )}
+                    {!hasZoom && !hasJitsi && (
+                      <span className="text-sm text-red-200">
+                        No join link configured.
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* Zoom / Countdown */}
+        {/* Join Area */}
         {selectedMeeting && (
           <div className="mt-10">
             <h2 className="text-xl font-semibold mb-4">
               {countdown !== null && countdown > 0
                 ? `Meeting starts in ${Math.floor(countdown / 60)}m ${countdown % 60}s`
-                : `Joining Meeting: ${selectedMeeting.date} @ ${selectedMeeting.time}`}
+                : `Joining: ${(selectedMeeting.topic || "Meeting")} — ${selectedMeeting.date} @ ${selectedMeeting.time}`}
             </h2>
 
+            {/* Show after countdown reaches 0 */}
             {countdown === null || countdown <= 0 ? (
-              <ZoomJoiner
-                meetingNumber={extractMeetingId(selectedMeeting.joinUrl)}
-                password={extractPassword(selectedMeeting.joinUrl)}
-                userName={session?.user?.name || "Student"}
-                userEmail={session?.user?.email || ""}
-              />
+              <>
+                {selectedPlatform === "zoom" ? (
+                  <ZoomJoiner
+                    meetingNumber={extractMeetingId(effectiveZoomUrl(selectedMeeting))}
+                    password={extractPassword(effectiveZoomUrl(selectedMeeting))}
+                    userName={(session?.user?.name as string) || "Student"}
+                    userEmail={(session?.user?.email as string) || ""}
+                  />
+                ) : selectedPlatform === "jitsi" ? (
+                  <div className="w-full h-[600px] border rounded overflow-hidden bg-black">
+                    <JitsiEmbed
+                      roomUrl={selectedMeeting.joinUrlJitsi as string}
+                      displayName={(session?.user?.name as string) || "Student"}
+                      email={(session?.user?.email as string) || ""}
+                    />
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="p-4 border rounded bg-gray-100 text-center">
                 Please wait for the meeting to start...
@@ -203,7 +300,7 @@ export default function StudentDashboard() {
             )}
 
             <button
-              onClick={() => setSelectedMeeting(null)}
+              onClick={handleClose}
               className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
             >
               Close
@@ -264,6 +361,7 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
 
 // "use client";
 // import { useSession } from "next-auth/react";
