@@ -7,13 +7,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { meetingNumber, password, topic, date, time, classId, joinUrlZoom, joinUrlJitsi, createdBy } = body;
 
-    if (!meetingNumber || !topic || !date || !time || !classId) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
+ if (!topic || !date || !time || !classId) {
+  return NextResponse.json(
+    { error: "Missing required fields" },
+    { status: 400 }
+  );
+}
     const client = await clientPromise;
     const db = client.db("education-system");
 
