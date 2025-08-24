@@ -53,13 +53,14 @@ export default function AdminDashboard() {
       .then((data) => setClasses(data.classes || []));
   }, []);
 
-  // Fetch meetings
+  // Fetch meetings for selected class
   useEffect(() => {
-    if (classes.length === 0) return;
-    fetch(
-      "/api/meetings/list?classId=" +
-        (selectedClassId || classes[0]?._id || "")
-    )
+    if (!selectedClassId && classes[0]?._id) {
+      setSelectedClassId(classes[0]._id);
+    }
+    if (!selectedClassId) return;
+
+    fetch("/api/meetings/list?classId=" + selectedClassId)
       .then((res) => res.json())
       .then((data) => setMeetings(data.meetings || []));
   }, [selectedClassId, classes]);
@@ -75,15 +76,12 @@ export default function AdminDashboard() {
       body: JSON.stringify({ userId, ...updates }),
     });
 
-    setUsers(users.map((u) => (u._id === userId ? { ...u, ...updates } : u)));
+    setUsers(
+      users.map((u) => (u._id === userId ? { ...u, ...updates } : u))
+    );
   };
 
-  // Redirect to class page
-  const goToClassPage = (classId: string) => {
-    window.location.href = `/dashboard/class/${classId}`;
-  };
-
-  // Save meeting link (admin manually pastes Zoom link)
+  // Save new Zoom meeting link
   const saveMeeting = async () => {
     if (!newMeeting.topic || !newMeeting.joinUrl) {
       alert("Please enter topic and join link.");
@@ -98,10 +96,8 @@ export default function AdminDashboard() {
 
     setNewMeeting({ topic: "", joinUrl: "", date: "", time: "" });
 
-    // Refresh meetings list
-    const res = await fetch(
-      "/api/meetings/list?classId=" + (selectedClassId || classes[0]?._id || "")
-    );
+    // Refresh meetings
+    const res = await fetch("/api/meetings/list?classId=" + selectedClassId);
     const data = await res.json();
     setMeetings(data.meetings || []);
   };
@@ -167,23 +163,23 @@ export default function AdminDashboard() {
         classId={selectedClassId || classes[0]?._id || ""}
       />
 
-      {/* Classes List */}
+      {/* Select Class */}
       <div className="mt-6">
-        <h2 className="text-xl font-bold mb-2">Classes</h2>
-        <ul>
+        <h2 className="text-xl font-bold mb-2">Select Class</h2>
+        <select
+          value={selectedClassId}
+          onChange={(e) => setSelectedClassId(e.target.value)}
+          className="border p-2 w-full mb-4"
+        >
           {classes.map((cls) => (
-            <li
-              key={cls._id}
-              onClick={() => goToClassPage(cls._id)}
-              className="cursor-pointer text-blue-600 underline mb-1"
-            >
+            <option key={cls._id} value={cls._id}>
               {cls.name}
-            </li>
+            </option>
           ))}
-        </ul>
+        </select>
       </div>
 
-      {/* Admin: Paste Zoom Meeting Link */}
+      {/* Add Zoom Meeting Link */}
       <div className="mt-6 border p-4 rounded">
         <h2 className="text-xl font-bold mb-2">Add Zoom Meeting Link</h2>
         <input
