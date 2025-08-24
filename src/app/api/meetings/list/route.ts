@@ -13,13 +13,26 @@ export async function GET(req: Request) {
     const filter = classId ? { classId } : {};
     const meetings = await db
       .collection("meetings")
-      .find(filter)
+      .find(filter, {
+        projection: {
+          _id: 1,
+          classId: 1,
+          topic: 1,
+          date: 1,
+          time: 1,
+          joinUrl: 1,
+          joinUrlZoom: 1,
+          joinUrlJitsi: 1,
+          createdBy: 1,
+          createdAt: 1,
+        },
+      })
       .sort({ date: 1, time: 1 })
       .toArray();
 
-    return NextResponse.json({ success: true, meetings });
+    return NextResponse.json({ meetings });
   } catch (err) {
-    console.error("Error fetching meetings:", err);
+    console.error(err);
     return NextResponse.json(
       { error: "Failed to fetch meetings" },
       { status: 500 }

@@ -1,3 +1,4 @@
+//dashboard/student/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -235,11 +236,11 @@ export default function StudentDashboard() {
                     </p>
                   )}
 
-                  <div className="flex flex-wrap gap-2 mt-4">
+                  <div className="flex flex-col gap-2 mt-4">
                     {hasZoom && (
                       <button
                         onClick={() => handleJoin(m, "zoom")}
-                        className="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
                       >
                         Join via Zoom
                       </button>
@@ -247,18 +248,16 @@ export default function StudentDashboard() {
                     {hasJitsi && (
                       <button
                         onClick={() => handleJoin(m, "jitsi")}
-                        className="inline-block bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition"
+                        className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition"
                       >
                         Join via Jitsi
                       </button>
                     )}
                     {!hasZoom && !hasJitsi && (
-                      <span className="text-sm text-red-200">
-                        No join link configured.
-                      </span>
+                      <span className="text-sm text-red-200">No join link configured.</span>
                     )}
                   </div>
-                </div>
+                  </div>
               );
             })}
           </div>
