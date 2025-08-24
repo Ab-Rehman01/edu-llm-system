@@ -1,7 +1,8 @@
+//dashboard/student/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 const ZoomJoiner = dynamic(() => import("@/components/ZoomJoiner"), {
@@ -21,7 +22,7 @@ type Meeting = {
   classId: string;
   date: string;
   time: string;
-  meetingLink: string;
+  joinUrl: string;
   createdBy: string;
   createdAt: string;
 };
@@ -29,14 +30,22 @@ type Meeting = {
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [classes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+  // Countdown timer state
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   // Fetch assignments
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.classId) return;
+    if (status === "loading") return;
+    if (status !== "authenticated") return;
+    if (!session?.user?.classId) return;
 
     fetch(`/api/assignments/list?classId=${session.user.classId}`)
       .then(res => res.json())
@@ -49,13 +58,40 @@ export default function StudentDashboard() {
 
   // Fetch meetings
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user?.classId) return;
+    if (!session?.user?.classId) return;
 
-    fetch(`/api/meetings/list?classId=${session.user.classId}`)
+    fetch("/api/meetings/list?classId=" + session.user.classId)
       .then(res => res.json())
       .then(data => setMeetings(data.meetings || []))
       .catch(err => console.error("Error fetching meetings", err));
-  }, [status, session]);
+  }, [session]);
+
+  // Setup countdown timer for selected meeting
+  useEffect(() => {
+    if (!selectedMeeting) return;
+
+    const meetingTime = new Date(`${selectedMeeting.date}T${selectedMeeting.time}`);
+    const now = new Date();
+    const secondsLeft = Math.floor((meetingTime.getTime() - now.getTime()) / 1000);
+
+    if (secondsLeft > 0) {
+      setCountdown(secondsLeft);
+
+      const interval = setInterval(() => {
+        setCountdown(prev => {
+          if (!prev || prev <= 1) {
+            clearInterval(interval);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setCountdown(0);
+    }
+  }, [selectedMeeting]);
 
   if (loading) return <p>Loading assignments...</p>;
 
@@ -68,17 +104,17 @@ export default function StudentDashboard() {
 
   const extractMeetingId = (url: string) => {
     try {
-      const u = new URL(url);
-      return u.searchParams.get("meetingId") || "";
+      const match = url.match(/\/j\/(\d+)/);
+      return match ? match[1] : "";
     } catch {
-      return url;
+      return "";
     }
   };
 
   const extractPassword = (url: string) => {
     try {
-      const u = new URL(url);
-      return u.searchParams.get("pwd") || "";
+      const params = new URL(url).searchParams;
+      return params.get("pwd") || "";
     } catch {
       return "";
     }
@@ -87,79 +123,29 @@ export default function StudentDashboard() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Student Dashboard</h1>
+      <h2 className="mb-4">Assignments for your class</h2>
 
-      {/* Assignments Section */}
-      <h2 className="mb-4 text-xl font-semibold">Assignments</h2>
-      {assignments.length === 0 ? (
-        <p>No assignments found.</p>
-      ) : (
-        <ul className="space-y-3">
-          {assignments.map(a => (
-            <li key={a._id} className="border p-3 rounded flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{getFileIcon(a.url)}</span>
-                <div>
-                  <strong>Subject:</strong> {a.subject} <br />
-                  <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
-                  <button
-                    onClick={() => setSelectedAssignment(a)}
-                    className="text-blue-600 hover:underline mt-1"
-                  >
-                    {a.filename || "View Assignment"}
-                  </button>
-                </div>
+      {assignments.length === 0 && <p>No assignments found.</p>}
+
+      <ul className="space-y-3">
+        {assignments.map(a => (
+          <li key={a._id} className="border p-3 rounded flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{getFileIcon(a.url)}</span>
+              <div>
+                <strong>Subject:</strong> {a.subject} <br />
+                <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
+                <button
+                  onClick={() => setSelectedAssignment(a)}
+                  className="text-blue-600 hover:underline mt-1"
+                >
+                  {a.filename || "View Assignment"}
+                </button>
               </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Selected Assignment Preview */}
-      {selectedAssignment && (
-        <div className="mt-6 border-t pt-4">
-          <h2 className="text-xl font-semibold mb-2">
-            Viewing: {selectedAssignment.filename}
-          </h2>
-          {selectedAssignment.url.endsWith(".pdf") && (
-            <iframe
-              src={selectedAssignment.url}
-              className="w-full h-[600px] border"
-              title={selectedAssignment.filename}
-            />
-          )}
-          {selectedAssignment.url.match(/\.(jpg|jpeg|png|gif)$/) && (
-            <img
-              src={selectedAssignment.url}
-              alt={selectedAssignment.filename}
-              className="max-w-full h-auto border"
-            />
-          )}
-          {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
-            <video controls className="w-full max-h-[600px] border">
-              <source src={selectedAssignment.url} type="video/mp4" />
-            </video>
-          )}
-          {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
-            <p>
-              File type not supported.{" "}
-              <a
-                href={selectedAssignment.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Download
-              </a>
-            </p>
-          )}
-          <button
-            onClick={() => setSelectedAssignment(null)}
-            className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
-          >
-            Close Assignment
-          </button>
-        </div>
-      )}
+            </div>
+          </li>
+        ))}
+      </ul>
 
       {/* Meetings Section */}
       <section className="mt-10">
@@ -171,7 +157,7 @@ export default function StudentDashboard() {
             {meetings.map(m => (
               <div
                 key={m._id}
-                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition"
+                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
               >
                 <p className="text-lg font-bold text-yellow-300 mb-2">
                   {m.date} @ {m.time}
@@ -194,27 +180,87 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* ZoomJoiner iframe embed */}
+        {/* Zoom / Countdown */}
         {selectedMeeting && (
           <div className="mt-10">
             <h2 className="text-xl font-semibold mb-4">
-              Joining Meeting: {selectedMeeting.date} @ {selectedMeeting.time}
+              {countdown !== null && countdown > 0
+                ? `Meeting starts in ${Math.floor(countdown / 60)}m ${countdown % 60}s`
+                : `Joining Meeting: ${selectedMeeting.date} @ ${selectedMeeting.time}`}
             </h2>
-            <ZoomJoiner
-              meetingNumber={extractMeetingId(selectedMeeting.meetingLink)}
-              password={extractPassword(selectedMeeting.meetingLink)}
-              userName={session?.user?.name || "Student"}
-              userEmail={session?.user?.email || ""}
-            />
+
+            {countdown === null || countdown <= 0 ? (
+              <ZoomJoiner
+                meetingNumber={extractMeetingId(selectedMeeting.joinUrl)}
+                password={extractPassword(selectedMeeting.joinUrl)}
+                userName={session?.user?.name || "Student"}
+                userEmail={session?.user?.email || ""}
+              />
+            ) : (
+              <div className="p-4 border rounded bg-gray-100 text-center">
+                Please wait for the meeting to start...
+              </div>
+            )}
+
             <button
               onClick={() => setSelectedMeeting(null)}
               className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
             >
-              Close Meeting
+              Close
             </button>
           </div>
         )}
       </section>
+
+      {/* Selected Assignment View */}
+      {selectedAssignment && (
+        <div className="mt-6 border-t pt-4">
+          <h2 className="text-xl font-semibold mb-2">
+            Viewing: {selectedAssignment.filename}
+          </h2>
+          <p className="text-gray-600 mb-2">
+            <strong>Uploaded At:</strong>{" "}
+            {new Date(selectedAssignment.uploadedAt).toLocaleString()}
+          </p>
+
+          {selectedAssignment.url.endsWith(".pdf") && (
+            <iframe
+              src={selectedAssignment.url}
+              className="w-full h-[600px] border"
+              title={selectedAssignment.filename}
+            />
+          )}
+
+          {selectedAssignment.url.match(/\.(jpg|jpeg|png|gif)$/) && (
+            <img
+              src={selectedAssignment.url}
+              alt={selectedAssignment.filename}
+              className="max-w-full h-auto border"
+            />
+          )}
+
+          {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
+            <video controls className="w-full max-h-[600px] border">
+              <source src={selectedAssignment.url} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          )}
+
+          {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
+            <p>
+              File type not supported for inline view.{" "}
+              <a
+                href={selectedAssignment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Download
+              </a>
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
