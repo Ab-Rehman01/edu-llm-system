@@ -17,9 +17,12 @@ export async function GET(req: Request) {
       .sort({ date: 1, time: 1 })
       .toArray();
 
-    return NextResponse.json({ meetings });
+    return NextResponse.json({ success: true, meetings });
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Failed to fetch meetings" }, { status: 500 });
+    console.error("Error fetching meetings:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch meetings" },
+      { status: 500 }
+    );
   }
 }

@@ -1,36 +1,37 @@
-import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { topic, type, meetingNumber, password, joinUrlZoom, joinUrlJitsi, startTime, classId } = body;
+    const { meetingNumber, password, topic, date, time, classId } = body;
 
-    if (!topic) {
-  return NextResponse.json({ error: "Missing topic" }, { status: 400 });
-}
-
+    if (!meetingNumber || !topic || !date || !time || !classId) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
 
     const client = await clientPromise;
-    const db = client.db("meetingsDB");
-    const collection = db.collection("meetings");
+    const db = client.db("education-system");
 
-    const meeting = {
-  title: topic,
-  type: type || (joinUrlZoom ? "zoom" : "jitsi"),
-  meetingNumber: meetingNumber || null,
-  password: password || null,
-  joinUrlZoom: joinUrlZoom || null,
-  joinUrlJitsi: joinUrlJitsi || null,
-  classId,
-  startTime: startTime || new Date(),
-  createdAt: new Date(),
-};
-    await collection.insertOne(meeting);
+    const result = await db.collection("meetings").insertOne({
+      meetingNumber,
+      password: password || "",
+      topic,
+      date,
+      time,
+      classId,
+      createdAt: new Date(),
+    });
 
-    return NextResponse.json({ success: true, meeting });
-  } catch (error) {
-    console.error("Error adding meeting:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ success: true, id: result.insertedId });
+  } catch (err) {
+    console.error("Error creating meeting:", err);
+    return NextResponse.json(
+      { error: "Failed to create meeting" },
+      { status: 500 }
+    );
   }
 }
