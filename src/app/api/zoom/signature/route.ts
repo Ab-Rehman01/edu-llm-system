@@ -1,40 +1,19 @@
 //src/app/api/zoom/signature/route.ts
-import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { generateZoomSignature } from "@/lib/zoom";
 
-export async function POST(req: Request) {
-  try {
-    const { meetingNumber, role } = await req.json();
+export async function POST(req: NextRequest) {
+  const { meetingNumber, role } = await req.json();
 
-    const sdkKey = process.env.ZOOM_SDK_KEY!;
-    const sdkSecret = process.env.ZOOM_SDK_SECRET!;
+  const signature = generateZoomSignature(
+    process.env.ZOOM_SDK_KEY!,
+    process.env.ZOOM_SDK_SECRET!,
+    meetingNumber,
+    role
+  );
 
-    const iat = Math.round(new Date().getTime() / 1000) - 30;
-    const exp = iat + 60 * 60 * 2; // 2 hours validity
-
-    const header = Buffer.from(
-      JSON.stringify({ alg: "HS256", typ: "JWT" })
-    ).toString("base64");
-
-    const payload = Buffer.from(
-      JSON.stringify({ sdkKey, mn: meetingNumber, role, iat, exp, appKey: sdkKey, tokenExp: exp })
-    ).toString("base64");
-
-    const data = `${header}.${payload}`;
-    const signature = crypto
-      .createHmac("sha256", sdkSecret)
-      .update(data)
-      .digest("base64");
-
-    const jwt = `${data}.${signature}`;
-
-    return NextResponse.json({ signature: jwt });
-  } catch (error) {
-    console.error("Signature Error:", error);
-    return NextResponse.json({ error: "Failed to generate signature" }, { status: 500 });
-  }
+  return NextResponse.json({ signature });
 }
-
 // import { NextResponse } from "next/server";
 // import jwt from "jsonwebtoken";
 

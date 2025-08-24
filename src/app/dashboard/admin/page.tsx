@@ -1,5 +1,3 @@
-//dashboard/admin/page.tsx
-// dashboard/admin/page.tsx
 "use client";
 
 import AssignmentUpload from "@/components/AssignmentUpload";
@@ -32,32 +30,14 @@ export default function AdminDashboard() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
 
-  const [meeting, setMeeting] = useState({
-    classId: "",
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+  const [newMeeting, setNewMeeting] = useState({
+    topic: "",
+    joinUrl: "",
     date: "",
     time: "",
-    topic: "",
   });
-
-  const createMeeting = async () => {
-    const res = await fetch("/api/meetings/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...meeting,
-        createdBy: "admin", // TODO: actual logged-in admin ka ID dalna
-      }),
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      alert("Zoom Meeting Created Successfully!");
-      setMeeting({ classId: "", date: "", time: "", topic: "" }); // reset form
-    } else {
-      alert("Error creating meeting: " + data.error);
-    }
-  };
 
   // Fetch users
   useEffect(() => {
@@ -73,10 +53,7 @@ export default function AdminDashboard() {
       .then((data) => setClasses(data.classes || []));
   }, []);
 
-  // Meetings list ke liye state
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-
-  // fetch meetings
+  // Fetch meetings
   useEffect(() => {
     if (classes.length === 0) return;
     fetch(
@@ -84,10 +61,7 @@ export default function AdminDashboard() {
         (selectedClassId || classes[0]?._id || "")
     )
       .then((res) => res.json())
-      .then((data) => {
-        console.log("Meetings fetched:", data); // debug
-        setMeetings(data.meetings || []);
-      });
+      .then((data) => setMeetings(data.meetings || []));
   }, [selectedClassId, classes]);
 
   // Update user role or class
@@ -104,16 +78,39 @@ export default function AdminDashboard() {
     setUsers(users.map((u) => (u._id === userId ? { ...u, ...updates } : u)));
   };
 
-  // Redirect admin to selected class page
+  // Redirect to class page
   const goToClassPage = (classId: string) => {
     window.location.href = `/dashboard/class/${classId}`;
+  };
+
+  // Save meeting link (admin manually pastes Zoom link)
+  const saveMeeting = async () => {
+    if (!newMeeting.topic || !newMeeting.joinUrl) {
+      alert("Please enter topic and join link.");
+      return;
+    }
+
+    await fetch("/api/meetings/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...newMeeting, classId: selectedClassId }),
+    });
+
+    setNewMeeting({ topic: "", joinUrl: "", date: "", time: "" });
+
+    // Refresh meetings list
+    const res = await fetch(
+      "/api/meetings/list?classId=" + (selectedClassId || classes[0]?._id || "")
+    );
+    const data = await res.json();
+    setMeetings(data.meetings || []);
   };
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
 
-      {/* Users table */}
+      {/* Users Table */}
       <table className="border w-full mb-6">
         <thead>
           <tr className="bg-gray-200">
@@ -186,53 +183,48 @@ export default function AdminDashboard() {
         </ul>
       </div>
 
-      {/* Zoom Meeting Form */}
+      {/* Admin: Paste Zoom Meeting Link */}
       <div className="mt-6 border p-4 rounded">
-        <h2 className="text-xl font-bold mb-2">Create Zoom Class Meeting</h2>
-        <select
-          className="border p-2 mb-2 w-full"
-          value={meeting.classId}
-          onChange={(e) =>
-            setMeeting({ ...meeting, classId: e.target.value })
-          }
-        >
-          <option value="">Select Class</option>
-          {classes.map((cls) => (
-            <option key={cls._id} value={cls._id}>
-              {cls.name}
-            </option>
-          ))}
-        </select>
+        <h2 className="text-xl font-bold mb-2">Add Zoom Meeting Link</h2>
         <input
           type="text"
           placeholder="Meeting Topic"
           className="border p-2 mb-2 w-full"
-          value={meeting.topic}
+          value={newMeeting.topic}
           onChange={(e) =>
-            setMeeting({ ...meeting, topic: e.target.value })
+            setNewMeeting({ ...newMeeting, topic: e.target.value })
+          }
+        />
+        <input
+          type="text"
+          placeholder="Zoom Join URL"
+          className="border p-2 mb-2 w-full"
+          value={newMeeting.joinUrl}
+          onChange={(e) =>
+            setNewMeeting({ ...newMeeting, joinUrl: e.target.value })
           }
         />
         <input
           type="date"
           className="border p-2 mb-2 w-full"
-          value={meeting.date}
+          value={newMeeting.date}
           onChange={(e) =>
-            setMeeting({ ...meeting, date: e.target.value })
+            setNewMeeting({ ...newMeeting, date: e.target.value })
           }
         />
         <input
           type="time"
           className="border p-2 mb-2 w-full"
-          value={meeting.time}
+          value={newMeeting.time}
           onChange={(e) =>
-            setMeeting({ ...meeting, time: e.target.value })
+            setNewMeeting({ ...newMeeting, time: e.target.value })
           }
         />
         <button
-          onClick={createMeeting}
+          onClick={saveMeeting}
           className="bg-blue-600 text-white px-4 py-2 rounded"
         >
-          Create Zoom Meeting
+          Save Meeting
         </button>
       </div>
 
@@ -242,8 +234,8 @@ export default function AdminDashboard() {
         <ul>
           {meetings.map((m) => (
             <li key={m._id} className="mb-2">
-              <span className="font-semibold">{m.topic}</span> -{" "}
-              {m.date} {m.time} -{" "}
+              <span className="font-semibold">{m.topic}</span> - {m.date}{" "}
+              {m.time} -{" "}
               <a
                 href={m.joinUrl}
                 target="_blank"

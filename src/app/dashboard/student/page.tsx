@@ -1,8 +1,9 @@
-//dashboard/student/page.tsx
 "use client";
-import { useSession } from "next-auth/react";
+
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
+
 const ZoomJoiner = dynamic(() => import("@/components/ZoomJoiner"), {
   ssr: false,
 });
@@ -14,6 +15,7 @@ type Assignment = {
   subject: string;
   uploadedAt: string;
 };
+
 type Meeting = {
   _id: string;
   classId: string;
@@ -27,19 +29,14 @@ type Meeting = {
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [classes] = useState([]);
-
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-
-  const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  // Fetch assignments
   useEffect(() => {
-    if (status === "loading") return;
-    if (status !== "authenticated") return;
-    if (!session?.user?.classId) return;
+    if (status !== "authenticated" || !session?.user?.classId) return;
 
     fetch(`/api/assignments/list?classId=${session.user.classId}`)
       .then(res => res.json())
@@ -49,18 +46,17 @@ export default function StudentDashboard() {
       })
       .catch(() => setLoading(false));
   }, [status, session]);
-  // fetch meetings
-  useEffect(() => {
-    if (!session?.user?.classId) return;
 
-    fetch("/api/meetings/list?classId=" + session.user.classId)
+  // Fetch meetings
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.classId) return;
+
+    fetch(`/api/meetings/list?classId=${session.user.classId}`)
       .then(res => res.json())
-      .then(data => {
-        console.log("Meetings fetched:", data); // debug
-        setMeetings(data.meetings || []);
-      })
+      .then(data => setMeetings(data.meetings || []))
       .catch(err => console.error("Error fetching meetings", err));
-  }, [session]);
+  }, [status, session]);
+
   if (loading) return <p>Loading assignments...</p>;
 
   const getFileIcon = (url: string) => {
@@ -70,35 +66,102 @@ export default function StudentDashboard() {
     return "📎";
   };
 
+  const extractMeetingId = (url: string) => {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get("meetingId") || "";
+    } catch {
+      return url;
+    }
+  };
+
+  const extractPassword = (url: string) => {
+    try {
+      const u = new URL(url);
+      return u.searchParams.get("pwd") || "";
+    } catch {
+      return "";
+    }
+  };
+
   return (
     <div className="p-6">
-
       <h1 className="text-3xl font-bold mb-4">Student Dashboard</h1>
-      <h2 className="mb-4">Assignments for your class</h2>
 
-      {assignments.length === 0 && <p>No assignments found.</p>}
-
-
-      <ul className="space-y-3">
-        {assignments.map(a => (
-          <li key={a._id} className="border p-3 rounded flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{getFileIcon(a.url)}</span>
-              <div>
-                <strong>Subject:</strong> {a.subject} <br />
-                <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
-                <button
-                  onClick={() => setSelectedAssignment(a)}
-                  className="text-blue-600 hover:underline mt-1"
-                >
-                  {a.filename || "View Assignment"}
-                </button>
+      {/* Assignments Section */}
+      <h2 className="mb-4 text-xl font-semibold">Assignments</h2>
+      {assignments.length === 0 ? (
+        <p>No assignments found.</p>
+      ) : (
+        <ul className="space-y-3">
+          {assignments.map(a => (
+            <li key={a._id} className="border p-3 rounded flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{getFileIcon(a.url)}</span>
+                <div>
+                  <strong>Subject:</strong> {a.subject} <br />
+                  <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
+                  <button
+                    onClick={() => setSelectedAssignment(a)}
+                    className="text-blue-600 hover:underline mt-1"
+                  >
+                    {a.filename || "View Assignment"}
+                  </button>
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {/* 📅 Meetings Section */}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Selected Assignment Preview */}
+      {selectedAssignment && (
+        <div className="mt-6 border-t pt-4">
+          <h2 className="text-xl font-semibold mb-2">
+            Viewing: {selectedAssignment.filename}
+          </h2>
+          {selectedAssignment.url.endsWith(".pdf") && (
+            <iframe
+              src={selectedAssignment.url}
+              className="w-full h-[600px] border"
+              title={selectedAssignment.filename}
+            />
+          )}
+          {selectedAssignment.url.match(/\.(jpg|jpeg|png|gif)$/) && (
+            <img
+              src={selectedAssignment.url}
+              alt={selectedAssignment.filename}
+              className="max-w-full h-auto border"
+            />
+          )}
+          {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
+            <video controls className="w-full max-h-[600px] border">
+              <source src={selectedAssignment.url} type="video/mp4" />
+            </video>
+          )}
+          {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
+            <p>
+              File type not supported.{" "}
+              <a
+                href={selectedAssignment.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Download
+              </a>
+            </p>
+          )}
+          <button
+            onClick={() => setSelectedAssignment(null)}
+            className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
+          >
+            Close Assignment
+          </button>
+        </div>
+      )}
+
+      {/* Meetings Section */}
       <section className="mt-10">
         <h2 className="text-xl font-semibold mb-4">Meetings</h2>
         {meetings.length === 0 ? (
@@ -108,7 +171,7 @@ export default function StudentDashboard() {
             {meetings.map(m => (
               <div
                 key={m._id}
-                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
+                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition"
               >
                 <p className="text-lg font-bold text-yellow-300 mb-2">
                   {m.date} @ {m.time}
@@ -131,7 +194,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* Agar koi meeting select ho gayi to ZoomJoiner render kare */}
+        {/* ZoomJoiner iframe embed */}
         {selectedMeeting && (
           <div className="mt-10">
             <h2 className="text-xl font-semibold mb-4">
@@ -152,62 +215,9 @@ export default function StudentDashboard() {
           </div>
         )}
       </section>
-      {selectedAssignment && (
-        <div className="mt-6 border-t pt-4">
-          <h2 className="text-xl font-semibold mb-2">
-            Viewing: {selectedAssignment.filename}
-          </h2>
-          <p className="text-gray-600 mb-2">
-            <strong>Uploaded At:</strong>{" "}
-            {new Date(selectedAssignment.uploadedAt).toLocaleString()}
-          </p>
-
-          {selectedAssignment.url.endsWith(".pdf") && (
-            <iframe
-              src={selectedAssignment.url}
-              className="w-full h-[600px] border"
-              title={selectedAssignment.filename}
-            />
-          )}
-
-          {selectedAssignment.url.match(/\.(jpg|jpeg|png|gif)$/) && (
-            <img
-              src={selectedAssignment.url}
-              alt={selectedAssignment.filename}
-              className="max-w-full h-auto border"
-            />
-          )}
-
-          {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
-            <video controls className="w-full max-h-[600px] border">
-              <source src={selectedAssignment.url} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          )}
-
-          {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
-            <p>
-              File type not supported for inline view.{" "}
-              <a
-                href={selectedAssignment.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Download
-              </a>
-            </p>
-          )}
-        </div>
-
-
-
-      )}
     </div>
-
   );
 }
-
 
 // "use client";
 // import { useSession } from "next-auth/react";
