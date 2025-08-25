@@ -1,5 +1,6 @@
 "use client";
 
+
 import AssignmentUpload from "@/components/AssignmentUpload";
 import { useEffect, useState } from "react";
 
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
   // Fetch attendance for selected meeting
   useEffect(() => {
     if (!selectedMeetingId) return;
-    fetch(`/api/meetings/attendance/report/${selectedMeetingId}`)
+    fetch(`/api/attendance/report/${selectedMeetingId}`)
       .then((res) => res.json())
       .then((data) => setAttendance(data || []));
   }, [selectedMeetingId]);
