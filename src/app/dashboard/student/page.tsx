@@ -139,7 +139,7 @@ export default function StudentDashboard() {
                 onClick={() => setSelectedAssignment(a)}
                 className="mt-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
-                {a.filename || "View Assignment"}
+                View Assignment
               </button>
             </div>
           ))}
@@ -192,7 +192,7 @@ export default function StudentDashboard() {
             <iframe
               src={selectedPlatform === "jitsi" ? selectedMeeting.joinUrlJitsi : selectedMeeting.joinUrlZoom}
               title="Meeting"
-              className="w-full h-full"
+              className="w-full h-full bg-black"
               allow="camera; microphone; fullscreen; display-capture"
             />
           ) : (
