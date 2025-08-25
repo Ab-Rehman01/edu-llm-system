@@ -1,13 +1,11 @@
+// src/app/api/meetings/attendance/report/[meetingId]/route.ts
 import clientPromise from "@/lib/mongodb";
 import { NextResponse } from "next/server";
 
-interface RouteContext {
-  params: {
-    meetingId: string;
-  };
-}
-
-export async function GET(req: Request, context: RouteContext) {
+export async function GET(
+  req: Request,
+  context: { params: { meetingId: string } }
+) {
   try {
     const client = await clientPromise;
     const db = client.db("education-system");
@@ -18,7 +16,7 @@ export async function GET(req: Request, context: RouteContext) {
       .toArray();
 
     const report = records.map((r: any) => {
-      let duration: number | null = null;
+      let duration = null;
       if (r.joinTime && r.leaveTime) {
         duration = Math.round(
           (new Date(r.leaveTime).getTime() -
