@@ -236,7 +236,7 @@ export default function StudentDashboard() {
           )}
 
           {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
-            <video controls className="w-full max-h-[600px] border rounded">
+            <video controls className="w-full max-h-[600px] border rounded bg-black">
               <source src={selectedAssignment.url} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
