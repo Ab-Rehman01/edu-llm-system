@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Assignment = {
   _id: string;
@@ -31,7 +31,6 @@ export default function StudentDashboard() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Selected assignment/meeting
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
@@ -43,15 +42,15 @@ export default function StudentDashboard() {
     joinStartedAtRef.current = new Date();
     const userId = (session.user as any)._id || (session.user as any).id || session.user.email;
     try {
-  await fetch("/api/attendance/join", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    meetingId: m._id,
-    studentId: userId,       // studentId route me expect ho raha
-    studentName: session.user.name,
-  }),
-});
+      await fetch("/api/attendance/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingId: m._id,
+          studentId: userId,
+          studentName: session.user.name,
+        }),
+      });
     } catch (err) {
       console.error("Join save failed", err);
     }
@@ -60,18 +59,17 @@ export default function StudentDashboard() {
   const saveLeave = async () => {
     if (!selectedMeeting || !session?.user || !joinStartedAtRef.current) return;
     const leaveTime = new Date();
-    const durationMs = leaveTime.getTime() - joinStartedAtRef.current.getTime();
     const userId = (session.user as any)._id || (session.user as any).id || session.user.email;
 
     try {
       await fetch("/api/attendance/leave", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    meetingId: selectedMeeting._id,
-    studentId: userId,
-  }),
-});
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingId: selectedMeeting._id,
+          studentId: userId,
+        }),
+      });
     } catch (err) {
       console.error("Leave save failed", err);
     }
@@ -86,7 +84,6 @@ export default function StudentDashboard() {
     setSelectedPlatform(platform);
     await saveJoin(m);
 
-    // Open link in new tab
     const url = platform === "zoom" ? m.joinUrlZoom : m.joinUrlJitsi;
     if (url) window.open(url, "_blank");
   };
@@ -113,46 +110,52 @@ export default function StudentDashboard() {
     fetchData();
   }, [status, session]);
 
-  if (loading) return <p>Loading dashboard...</p>;
+  if (loading) return <p className="text-center py-6">Loading dashboard...</p>;
 
   const getFileIcon = (url: string) => {
     if (url.endsWith(".pdf")) return "📄";
+    if (url.match(/\.(doc|docx|txt)$/)) return "📝";
     if (url.match(/\.(jpg|jpeg|png|gif)$/)) return "🖼️";
     if (url.match(/\.(mp4|webm|ogg)$/)) return "🎬";
     return "📎";
   };
 
-  const effectiveZoomUrl = (m?: Meeting) => m?.joinUrlZoom || "";
-
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Student Dashboard</h1>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">Student Dashboard</h1>
 
       {/* Assignments */}
-      <h2 className="mb-4">Assignments for your class</h2>
-      {assignments.length === 0 && <p>No assignments found.</p>}
-      <ul className="space-y-3">
-        {assignments.map((a) => (
-          <li key={a._id} className="border p-3 rounded flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{getFileIcon(a.url)}</span>
-              <div>
-                <strong>Subject:</strong> {a.subject} <br />
-                <strong>Uploaded:</strong> {new Date(a.uploadedAt).toLocaleString()} <br />
-                <button
-                  onClick={() => setSelectedAssignment(a)}
-                  className="text-blue-600 hover:underline mt-1"
-                >
-                  {a.filename || "View Assignment"}
-                </button>
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold mb-4">Assignments for your class</h2>
+        {assignments.length === 0 && <p>No assignments found.</p>}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {assignments.map((a) => (
+            <div
+              key={a._id}
+              className="bg-white rounded-xl shadow hover:shadow-lg transition p-4 flex flex-col gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{getFileIcon(a.url)}</span>
+                <div>
+                  <p><strong>Subject:</strong> {a.subject}</p>
+                  <p className="text-gray-500 text-sm">
+                    Uploaded: {new Date(a.uploadedAt).toLocaleString()}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => setSelectedAssignment(a)}
+                className="mt-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                {a.filename || "View Assignment"}
+              </button>
             </div>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      </section>
 
       {/* Meetings */}
-      <section className="mt-10">
+      <section className="mb-10">
         <h2 className="text-xl font-semibold mb-4">Meetings</h2>
         {meetings.length === 0 ? (
           <p>No meetings scheduled.</p>
@@ -161,28 +164,21 @@ export default function StudentDashboard() {
             {meetings.map((m) => (
               <div
                 key={m._id}
-                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
+                className="bg-white rounded-2xl shadow hover:shadow-lg transition p-5 flex flex-col gap-3"
               >
-                <p className="text-lg font-bold text-yellow-300 mb-2">
-                  {(m.topic || "Class Meeting")} — {m.date} @ {m.time}
+                <p className="text-lg font-bold text-gray-800 mb-1">
+                  {(m.topic || "Class Meeting")}
                 </p>
-                {m.createdBy && (
-                  <p>
-                    <span className="font-semibold">Created By:</span> {m.createdBy}
-                  </p>
-                )}
-                {m.createdAt && (
-                  <p>
-                    <span className="font-semibold">Created At:</span>{" "}
-                    {new Date(m.createdAt).toLocaleString()}
-                  </p>
-                )}
-
-                <div className="flex flex-col gap-2 mt-4">
+                <p className="text-gray-600 text-sm">
+                  {m.date} @ {m.time}
+                </p>
+                {m.createdBy && <p className="text-gray-500 text-sm">Created By: {m.createdBy}</p>}
+                {m.createdAt && <p className="text-gray-500 text-sm">Created At: {new Date(m.createdAt).toLocaleString()}</p>}
+                <div className="flex flex-col gap-2 mt-3">
                   {m.joinUrlZoom && (
                     <button
                       onClick={() => handleJoin(m, "zoom")}
-                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                     >
                       Join Zoom
                     </button>
@@ -190,13 +186,13 @@ export default function StudentDashboard() {
                   {m.joinUrlJitsi && (
                     <button
                       onClick={() => handleJoin(m, "jitsi")}
-                      className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition mt-2"
+                      className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-black transition"
                     >
                       Join Jitsi
                     </button>
                   )}
                   {!m.joinUrlZoom && !m.joinUrlJitsi && (
-                    <span className="text-sm text-red-200">No join link configured.</span>
+                    <span className="text-sm text-red-500">No join link configured.</span>
                   )}
                 </div>
               </div>
@@ -204,12 +200,11 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* Leave button */}
         {selectedMeeting && (
           <div className="mt-4">
             <button
               onClick={saveLeave}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition"
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
             >
               Leave Meeting
             </button>
@@ -219,19 +214,16 @@ export default function StudentDashboard() {
 
       {/* Selected Assignment View */}
       {selectedAssignment && (
-        <div className="mt-6 border-t pt-4">
-          <h2 className="text-xl font-semibold mb-2">
-            Viewing: {selectedAssignment.filename}
-          </h2>
+        <section className="mt-6 bg-white p-4 rounded-xl shadow">
+          <h2 className="text-xl font-semibold mb-2">Viewing: {selectedAssignment.filename}</h2>
           <p className="text-gray-600 mb-2">
-            <strong>Uploaded At:</strong>{" "}
-            {new Date(selectedAssignment.uploadedAt).toLocaleString()}
+            <strong>Uploaded At:</strong> {new Date(selectedAssignment.uploadedAt).toLocaleString()}
           </p>
 
           {selectedAssignment.url.endsWith(".pdf") && (
             <iframe
               src={selectedAssignment.url}
-              className="w-full h-[600px] border"
+              className="w-full h-[600px] border rounded"
               title={selectedAssignment.filename}
             />
           )}
@@ -240,18 +232,18 @@ export default function StudentDashboard() {
             <img
               src={selectedAssignment.url}
               alt={selectedAssignment.filename}
-              className="max-w-full h-auto border"
+              className="w-full max-h-[600px] object-contain border rounded"
             />
           )}
 
           {selectedAssignment.url.match(/\.(mp4|webm|ogg)$/) && (
-            <video controls className="w-full max-h-[600px] border">
+            <video controls className="w-full max-h-[600px] border rounded">
               <source src={selectedAssignment.url} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
           )}
 
-          {!selectedAssignment.url.match(/\.(pdf|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
+          {!selectedAssignment.url.match(/\.(pdf|doc|docx|txt|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
             <p>
               File type not supported for inline view.{" "}
               <a
@@ -264,13 +256,11 @@ export default function StudentDashboard() {
               </a>
             </p>
           )}
-        </div>
+        </section>
       )}
     </div>
   );
 }
-
-
 // "use client";
 
 // import { useSession } from "next-auth/react";
