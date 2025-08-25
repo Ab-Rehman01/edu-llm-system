@@ -3,10 +3,6 @@
 
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
-
-const ZoomJoiner = dynamic(() => import("@/components/ZoomJoiner"), { ssr: false });
-const JitsiEmbed = dynamic(() => import("@/components/JitsiEmbed"), { ssr: false });
 
 type Assignment = {
   _id: string;
@@ -22,14 +18,11 @@ type Meeting = {
   topic?: string;
   date: string;
   time: string;
-  joinUrl?: string;
   joinUrlZoom?: string;
   joinUrlJitsi?: string;
   createdBy?: string;
   createdAt?: string;
 };
-
-type Platform = "zoom" | "jitsi" | null;
 
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
@@ -37,123 +30,32 @@ export default function StudentDashboard() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Selected assignment/meeting
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
 
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const joinStartedAtRef = useRef<Date | null>(null);
-
-  // ---------------- attendance helpers ----------------
-  async function saveJoin() {
-    if (!selectedMeeting || !session?.user) return;
-    const classId = session.user.classId;
-    const userId =
-      (session.user as any)._id ||
-      (session.user as any).id ||
-      session.user.email;
-
-    try {
-      await fetch("/api/meetings/attendance/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          meetingId: selectedMeeting._id,
-          classId,
-          userId,
-          joinTime: new Date().toISOString(),
-        }),
-      });
-    } catch (e) {
-      console.error("join post failed", e);
-    }
-  }
-
-  async function saveLeave() {
-    if (!selectedMeeting || !session?.user) return;
-    const classId = session.user.classId;
-    const userId =
-      (session.user as any)._id ||
-      (session.user as any).id ||
-      session.user.email;
-
-    const joinTime = joinStartedAtRef.current;
-    const leaveTime = new Date();
-    const durationMs = joinTime ? leaveTime.getTime() - joinTime.getTime() : null;
-
-    try {
-      await fetch("/api/meetings/attendance/leave", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          meetingId: selectedMeeting._id,
-          classId,
-          userId,
-          leaveTime: leaveTime.toISOString(),
-          durationMs,
-        }),
-      });
-    } catch (e) {
-      console.error("leave post failed", e);
-    }
-  }
-
-  const handleJoin = async (m: Meeting, platform: Platform) => {
-    setSelectedMeeting(m);
-    setSelectedPlatform(platform);
-    joinStartedAtRef.current = new Date();
-    await saveJoin();
-  };
-
-  const handleClose = async () => {
-    await saveLeave();
-    setSelectedMeeting(null);
-    setSelectedPlatform(null);
-    joinStartedAtRef.current = null;
-    setCountdown(null);
-  };
-
-  useEffect(() => {
-    const handler = () => saveLeave();
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [selectedMeeting, session]);
-
-  // ---------------- fetch data ----------------
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.classId) return;
-    fetch(`/api/assignments/list?classId=${session.user.classId}`)
-      .then((res) => res.json())
-      .then((data) => setAssignments(data.assignments || []))
-      .finally(() => setLoading(false));
+
+    const fetchData = async () => {
+      try {
+        const [assignmentsRes, meetingsRes] = await Promise.all([
+          fetch(`/api/assignments/list?classId=${session.user.classId}`).then((res) => res.json()),
+          fetch(`/api/meetings/list?classId=${session.user.classId}`).then((res) => res.json()),
+        ]);
+        setAssignments(assignmentsRes.assignments || []);
+        setMeetings(meetingsRes.meetings || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [status, session]);
 
-  useEffect(() => {
-    if (!session?.user?.classId) return;
-    fetch(`/api/meetings/list?classId=${session.user.classId}`)
-      .then((res) => res.json())
-      .then((data) => setMeetings(data.meetings || []))
-      .catch((e) => console.error("Error fetching meetings", e));
-  }, [session]);
+  if (loading) return <p>Loading dashboard...</p>;
 
-  const selectedMeetingDate = useMemo(() => {
-    if (!selectedMeeting) return null;
-    return new Date(`${selectedMeeting.date}T${selectedMeeting.time}:00`);
-  }, [selectedMeeting]);
-
-  useEffect(() => {
-    if (!selectedMeetingDate) return;
-    const tick = () => {
-      const now = new Date();
-      const diffSec = Math.floor((selectedMeetingDate.getTime() - now.getTime()) / 1000);
-      setCountdown(diffSec > 0 ? diffSec : 0);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [selectedMeetingDate]);
-
-  // ---------------- helpers ----------------
   const getFileIcon = (url: string) => {
     if (url.endsWith(".pdf")) return "📄";
     if (url.match(/\.(jpg|jpeg|png|gif)$/)) return "🖼️";
@@ -161,35 +63,13 @@ export default function StudentDashboard() {
     return "📎";
   };
 
-  const extractMeetingId = (url?: string) => {
-    try {
-      if (!url) return "";
-      const match = url.match(/\/j\/(\d+)/);
-      return match ? match[1] : "";
-    } catch {
-      return "";
-    }
-  };
-
-  const extractPassword = (url?: string) => {
-    try {
-      if (!url) return "";
-      const params = new URL(url).searchParams;
-      return params.get("pwd") || "";
-    } catch {
-      return "";
-    }
-  };
-
-  const effectiveZoomUrl = (m?: Meeting) => m?.joinUrlZoom || m?.joinUrl || "";
-
-  // ---------------- render ----------------
-  if (loading) return <p>Loading assignments...</p>;
+  const effectiveZoomUrl = (m?: Meeting) => m?.joinUrlZoom || "";
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Student Dashboard</h1>
 
+      {/* Assignments */}
       <h2 className="mb-4">Assignments for your class</h2>
       {assignments.length === 0 && <p>No assignments found.</p>}
       <ul className="space-y-3">
@@ -212,105 +92,65 @@ export default function StudentDashboard() {
         ))}
       </ul>
 
+      {/* Meetings */}
       <section className="mt-10">
         <h2 className="text-xl font-semibold mb-4">Meetings</h2>
         {meetings.length === 0 ? (
           <p>No meetings scheduled.</p>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {meetings.map((m) => {
-              const hasZoom = !!effectiveZoomUrl(m);
-              const hasJitsi = !!m.joinUrlJitsi;
-              return (
-                <div
-                  key={m._id}
-                  className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
-                >
-                  <p className="text-lg font-bold text-yellow-300 mb-2">
-                    {(m.topic || "Class Meeting")} — {m.date} @ {m.time}
+            {meetings.map((m) => (
+              <div
+                key={m._id}
+                className="bg-white/10 border border-white/20 rounded-2xl p-5 shadow hover:shadow-lg transition duration-300"
+              >
+                <p className="text-lg font-bold text-yellow-300 mb-2">
+                  {(m.topic || "Class Meeting")} — {m.date} @ {m.time}
+                </p>
+                {m.createdBy && (
+                  <p>
+                    <span className="font-semibold">Created By:</span> {m.createdBy}
                   </p>
-                  {m.createdBy && (
-                    <p>
-                      <span className="font-semibold">Created By:</span> {m.createdBy}
-                    </p>
-                  )}
-                  {m.createdAt && (
-                    <p>
-                      <span className="font-semibold">Created At:</span>{" "}
-                      {new Date(m.createdAt).toLocaleString()}
-                    </p>
-                  )}
+                )}
+                {m.createdAt && (
+                  <p>
+                    <span className="font-semibold">Created At:</span>{" "}
+                    {new Date(m.createdAt).toLocaleString()}
+                  </p>
+                )}
 
-                  <div className="flex flex-col gap-2 mt-4">
-                    {hasZoom && (
-                      <button
-                        onClick={() => handleJoin(m, "zoom")}
-                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
-                      >
-                        Join via Zoom
-                      </button>
-                    )}
-                    {hasJitsi && (
-                      <button
-                        onClick={() => handleJoin(m, "jitsi")}
-                        className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition"
-                      >
-                        Join via Jitsi
-                      </button>
-                    )}
-                    {!hasZoom && !hasJitsi && (
-                      <span className="text-sm text-red-200">No join link configured.</span>
-                    )}
-                  </div>
+                <div className="flex flex-col gap-2 mt-4">
+                  {m.joinUrlZoom && (
+                    <a
+                      href={effectiveZoomUrl(m)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full text-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+                    >
+                      Join Zoom
+                    </a>
+                  )}
+                  {m.joinUrlJitsi && (
+                    <a
+                      href={m.joinUrlJitsi}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full text-center bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition mt-2"
+                    >
+                      Join Jitsi
+                    </a>
+                  )}
+                  {!m.joinUrlZoom && !m.joinUrlJitsi && (
+                    <span className="text-sm text-red-200">No join link configured.</span>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {selectedMeeting && (
-          <div className="mt-10">
-            <h2 className="text-xl font-semibold mb-4">
-              {countdown !== null && countdown > 0
-                ? `Meeting starts in ${Math.floor(countdown / 60)}m ${countdown % 60}s`
-                : `Joining: ${(selectedMeeting.topic || "Meeting")} — ${selectedMeeting.date} @ ${selectedMeeting.time}`}
-            </h2>
-
-            {countdown === null || countdown <= 0 ? (
-              <>
-                {selectedPlatform === "zoom" ? (
-                  <ZoomJoiner
-                    meetingNumber={extractMeetingId(effectiveZoomUrl(selectedMeeting))}
-                    password={extractPassword(effectiveZoomUrl(selectedMeeting))}
-                    userName={(session?.user?.name as string) || "Student"}
-                    userEmail={(session?.user?.email as string) || ""}
-                  />
-                ) : selectedPlatform === "jitsi" ? (
-                  <div className="w-full h-[600px] border rounded overflow-hidden bg-black">
-                    <JitsiEmbed
-                      roomUrl={selectedMeeting.joinUrlJitsi as string}
-                      displayName={(session?.user?.name as string) || "Student"}
-                      email={(session?.user?.email as string) || ""}
-                    />
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="p-4 border rounded bg-gray-100 text-center">
-                Please wait for the meeting to start...
               </div>
-            )}
-
-            <button
-              onClick={handleClose}
-              className="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg"
-            >
-              Close
-            </button>
+            ))}
           </div>
         )}
       </section>
 
+      {/* Selected Assignment View */}
       {selectedAssignment && (
         <div className="mt-6 border-t pt-4">
           <h2 className="text-xl font-semibold mb-2">
@@ -362,8 +202,6 @@ export default function StudentDashboard() {
     </div>
   );
 }
-
-
 
 
 
