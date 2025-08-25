@@ -192,7 +192,7 @@ export default function StudentDashboard() {
             <iframe
               src={selectedPlatform === "jitsi" ? selectedMeeting.joinUrlJitsi : selectedMeeting.joinUrlZoom}
               title="Meeting"
-              className="w-[800] h-full "
+              className="w-[800] h-full"
               allow="camera; microphone; fullscreen; display-capture"
             />
           ) : (

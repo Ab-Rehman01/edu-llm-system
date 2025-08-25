@@ -1,10 +1,9 @@
 // /app/api/classes/update/route.ts
-// src/app/api/classes/update/route.ts
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
-export async function PUT(req: Request) {
+export async function POST(req: Request) {
   try {
     const { id, name } = await req.json();
 
@@ -16,8 +15,8 @@ export async function PUT(req: Request) {
     const db = client.db("education-system");
 
     const result = await db.collection("classes").updateOne(
-      { _id: new ObjectId(id) }, // filter by _id
-      { $set: { name } }         // update only name
+      { _id: new ObjectId(id) }, // ✅ ensure ObjectId conversion
+      { $set: { name } }
     );
 
     if (result.matchedCount === 0) {
@@ -26,7 +25,7 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true, updatedId: id });
   } catch (error) {
-    console.error("Update error:", error);
+    console.error("Update class error:", error);
     return NextResponse.json({ error: "Failed to update class" }, { status: 500 });
   }
 }
