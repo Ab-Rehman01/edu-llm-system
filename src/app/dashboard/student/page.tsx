@@ -187,12 +187,12 @@ export default function StudentDashboard() {
         )}
 
         {/* Jitsi / Zoom iframe */}
-        <div className="mt-6 w-[800px] h-[600px] rounded-xl border flex items-center justify-center bg-black text-gray-300 text-xl overflow-hidden">
+        <div className="mt-6 w-full h-[600px] rounded-xl border flex items-center justify-center bg-black text-gray-300 text-xl overflow-hidden">
           {joined && selectedMeeting ? (
             <iframe
               src={selectedPlatform === "jitsi" ? selectedMeeting.joinUrlJitsi : selectedMeeting.joinUrlZoom}
               title="Meeting"
-              className="w-full h-full"
+              className="w-[800] h-full "
               allow="camera; microphone; fullscreen; display-capture"
             />
           ) : (
