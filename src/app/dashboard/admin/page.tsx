@@ -26,15 +26,26 @@ type Meeting = {
   joinUrlJitsi?: string;
 };
 
+type AttendanceRecord = {
+  studentId: string;
+  joinTime: string;
+  leaveTime?: string;
+  duration?: number | null;
+};
+
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string>("");
+
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+
   const [newMeeting, setNewMeeting] = useState({
     topic: "",
-    platform: "zoom", // default
+    platform: "zoom",
     joinUrlZoom: "",
     joinUrlJitsi: "",
     date: "",
@@ -55,19 +66,30 @@ export default function AdminDashboard() {
       .then((data) => setClasses(data.classes || []));
   }, []);
 
-  // Fetch meetings for selected class
+  // Set default selected class
   useEffect(() => {
     if (!selectedClassId && classes[0]?._id) {
       setSelectedClassId(classes[0]._id);
     }
-    if (!selectedClassId) return;
+  }, [classes, selectedClassId]);
 
+  // Fetch meetings
+  useEffect(() => {
+    if (!selectedClassId) return;
     fetch("/api/meetings/list?classId=" + selectedClassId)
       .then((res) => res.json())
       .then((data) => setMeetings(data.meetings || []));
-  }, [selectedClassId, classes]);
+  }, [selectedClassId]);
 
-  // Update user role or class
+  // Fetch attendance for selected meeting
+  useEffect(() => {
+    if (!selectedMeetingId) return;
+    fetch(`/api/meetings/attendance/report/${selectedMeetingId}`)
+      .then((res) => res.json())
+      .then((data) => setAttendance(data || []));
+  }, [selectedMeetingId]);
+
+  // Update user role/class
   const updateUser = async (
     userId: string,
     updates: Partial<{ role: string; classId: string }>
@@ -87,19 +109,11 @@ export default function AdminDashboard() {
       alert("Please enter meeting topic.");
       return;
     }
-
-    if (
-      newMeeting.platform === "zoom" &&
-      !newMeeting.joinUrlZoom.trim()
-    ) {
+    if (newMeeting.platform === "zoom" && !newMeeting.joinUrlZoom.trim()) {
       alert("Please enter Zoom join link.");
       return;
     }
-
-    if (
-      newMeeting.platform === "jitsi" &&
-      !newMeeting.joinUrlJitsi.trim()
-    ) {
+    if (newMeeting.platform === "jitsi" && !newMeeting.joinUrlJitsi.trim()) {
       alert("Please enter Jitsi join link.");
       return;
     }
@@ -305,10 +319,56 @@ export default function AdminDashboard() {
                   </a>
                 </>
               )}
+              <button
+                className="ml-4 text-sm text-purple-600 underline"
+                onClick={() => setSelectedMeetingId(m._id)}
+              >
+                View Attendance
+              </button>
             </li>
           ))}
         </ul>
       </div>
+
+      {/* Attendance Report */}
+      {selectedMeetingId && (
+        <div className="mt-6">
+          <h2 className="text-xl font-bold mb-2">Attendance Report</h2>
+          <table className="border w-full">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border p-2">Student</th>
+                <th className="border p-2">Join Time</th>
+                <th className="border p-2">Leave Time</th>
+                <th className="border p-2">Duration (min)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attendance.map((r, idx) => {
+                const student = users.find((u) => u._id === r.studentId);
+                return (
+                  <tr key={idx}>
+                    <td className="border p-2">
+                      {student?.name || r.studentId}
+                    </td>
+                    <td className="border p-2">
+                      {r.joinTime
+                        ? new Date(r.joinTime).toLocaleTimeString()
+                        : "-"}
+                    </td>
+                    <td className="border p-2">
+                      {r.leaveTime
+                        ? new Date(r.leaveTime).toLocaleTimeString()
+                        : "-"}
+                    </td>
+                    <td className="border p-2">{r.duration ?? "-"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
