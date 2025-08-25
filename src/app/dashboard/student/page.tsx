@@ -43,16 +43,15 @@ export default function StudentDashboard() {
     joinStartedAtRef.current = new Date();
     const userId = (session.user as any)._id || (session.user as any).id || session.user.email;
     try {
-      await fetch("/api/meetings/attendance/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          meetingId: m._id,
-          classId: session.user.classId,
-          userId,
-          joinTime: new Date().toISOString(),
-        }),
-      });
+  await fetch("/api/attendance/join", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    meetingId: m._id,
+    studentId: userId,       // studentId route me expect ho raha
+    studentName: session.user.name,
+  }),
+});
     } catch (err) {
       console.error("Join save failed", err);
     }
@@ -65,17 +64,14 @@ export default function StudentDashboard() {
     const userId = (session.user as any)._id || (session.user as any).id || session.user.email;
 
     try {
-      await fetch("/api/meetings/attendance/leave", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          meetingId: selectedMeeting._id,
-          classId: session.user.classId,
-          userId,
-          leaveTime: leaveTime.toISOString(),
-          durationMs,
-        }),
-      });
+      await fetch("/api/attendance/leave", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    meetingId: selectedMeeting._id,
+    studentId: userId,
+  }),
+});
     } catch (err) {
       console.error("Leave save failed", err);
     }
