@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  context: { params: { meetingId: string } }
+  { params }: { params: any }   // 👈 params ko any rakh do
 ) {
   try {
     const client = await clientPromise;
@@ -12,7 +12,7 @@ export async function GET(
 
     const records = await db
       .collection("attendance")
-      .find({ meetingId: context.params.meetingId })
+      .find({ meetingId: params.meetingId })
       .toArray();
 
     const report = records.map((r: any) => {
