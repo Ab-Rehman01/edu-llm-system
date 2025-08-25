@@ -54,6 +54,8 @@ export default function AdminDashboard() {
     time: "",
   });
 
+  const [newClassName, setNewClassName] = useState("");
+
   // ---------------- Fetch Users ----------------
   useEffect(() => {
     fetch("/api/users/list")
@@ -62,10 +64,14 @@ export default function AdminDashboard() {
   }, []);
 
   // ---------------- Fetch Classes ----------------
+  const loadClasses = async () => {
+    const res = await fetch("/api/classes/list");
+    const data = await res.json();
+    setClasses(data.classes || []);
+  };
+
   useEffect(() => {
-    fetch("/api/classes/list")
-      .then((res) => res.json())
-      .then((data) => setClasses(data.classes || []));
+    loadClasses();
   }, []);
 
   // Set default selected class
@@ -91,11 +97,8 @@ export default function AdminDashboard() {
       .then((data) => setAttendance(data || []));
   }, [selectedMeetingId]);
 
-  // ---------------- Update User Role/Class ----------------
-  const updateUser = async (
-    userId: string,
-    updates: Partial<{ role: string; classId: string }>
-  ) => {
+  // ---------------- Update User ----------------
+  const updateUser = async (userId: string, updates: { role: string; classId: string }) => {
     await fetch("/api/users/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -135,10 +138,40 @@ export default function AdminDashboard() {
       time: "",
     });
 
-    // Refresh meetings
     const res = await fetch("/api/meetings/list?classId=" + selectedClassId);
     const data = await res.json();
     setMeetings(data.meetings || []);
+  };
+
+  // ---------------- Manage Classes ----------------
+  const createClass = async () => {
+    if (!newClassName.trim()) return;
+    await fetch("/api/classes/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newClassName }),
+    });
+    setNewClassName("");
+    loadClasses();
+  };
+
+  const updateClass = async (id: string, name: string) => {
+    await fetch("/api/classes/update", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name }),
+    });
+    loadClasses();
+  };
+
+  const deleteClass = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this class?")) return;
+    await fetch("/api/classes/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    loadClasses();
   };
 
   return (
@@ -167,7 +200,11 @@ export default function AdminDashboard() {
                   <select
                     value={user.role}
                     onChange={(e) =>
-                      updateUser(user._id, { role: e.target.value })
+                      setUsers(
+                        users.map((u) =>
+                          u._id === user._id ? { ...u, role: e.target.value } : u
+                        )
+                      )
                     }
                     className="border p-1 rounded"
                   >
@@ -180,7 +217,11 @@ export default function AdminDashboard() {
                   <select
                     value={user.classId || ""}
                     onChange={(e) =>
-                      updateUser(user._id, { classId: e.target.value })
+                      setUsers(
+                        users.map((u) =>
+                          u._id === user._id ? { ...u, classId: e.target.value } : u
+                        )
+                      )
                     }
                     className="border p-1 rounded"
                   >
@@ -193,9 +234,79 @@ export default function AdminDashboard() {
                   </select>
                 </td>
                 <td className="border p-2">
-                  <span className="text-blue-600 underline cursor-pointer">
+                  <button
+                    onClick={() =>
+                      updateUser(user._id, {
+                        role: user.role,
+                        classId: user.classId || "",
+                      })
+                    }
+                    className="text-blue-600 underline cursor-pointer"
+                  >
                     Update
-                  </span>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ---------------- Class Management ---------------- */}
+      <div className="bg-white shadow rounded-lg p-4 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Manage Classes</h2>
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="New class name"
+            value={newClassName}
+            onChange={(e) => setNewClassName(e.target.value)}
+            className="border p-2 rounded w-full"
+          />
+          <button
+            onClick={createClass}
+            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
+          >
+            Add
+          </button>
+        </div>
+        <table className="w-full border rounded-lg overflow-hidden shadow-sm">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border p-2 text-left">Class Name</th>
+              <th className="border p-2 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classes.map((cls) => (
+              <tr key={cls._id}>
+                <td className="border p-2">
+                  <input
+                    type="text"
+                    value={cls.name}
+                    onChange={(e) =>
+                      setClasses(
+                        classes.map((c) =>
+                          c._id === cls._id ? { ...c, name: e.target.value } : c
+                        )
+                      )
+                    }
+                    className="border p-1 rounded w-full"
+                  />
+                </td>
+                <td className="border p-2 space-x-2">
+                  <button
+                    onClick={() => updateClass(cls._id, cls.name)}
+                    className="text-blue-600 underline"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => deleteClass(cls._id)}
+                    className="text-red-600 underline"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
             ))}
