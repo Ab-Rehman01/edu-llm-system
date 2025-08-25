@@ -1,4 +1,3 @@
-//dashboard/student/page.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -24,6 +23,8 @@ type Meeting = {
   createdAt?: string;
 };
 
+type Platform = "zoom" | "jitsi" | null;
+
 export default function StudentDashboard() {
   const { data: session, status } = useSession();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -32,7 +33,69 @@ export default function StudentDashboard() {
 
   // Selected assignment/meeting
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
+  const joinStartedAtRef = useRef<Date | null>(null);
 
+  // ---------------- Attendance helpers ----------------
+  const saveJoin = async (m: Meeting) => {
+    if (!session?.user) return;
+    joinStartedAtRef.current = new Date();
+    const userId = (session.user as any)._id || (session.user as any).id || session.user.email;
+    try {
+      await fetch("/api/meetings/attendance/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingId: m._id,
+          classId: session.user.classId,
+          userId,
+          joinTime: new Date().toISOString(),
+        }),
+      });
+    } catch (err) {
+      console.error("Join save failed", err);
+    }
+  };
+
+  const saveLeave = async () => {
+    if (!selectedMeeting || !session?.user || !joinStartedAtRef.current) return;
+    const leaveTime = new Date();
+    const durationMs = leaveTime.getTime() - joinStartedAtRef.current.getTime();
+    const userId = (session.user as any)._id || (session.user as any).id || session.user.email;
+
+    try {
+      await fetch("/api/meetings/attendance/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meetingId: selectedMeeting._id,
+          classId: session.user.classId,
+          userId,
+          leaveTime: leaveTime.toISOString(),
+          durationMs,
+        }),
+      });
+    } catch (err) {
+      console.error("Leave save failed", err);
+    }
+
+    setSelectedMeeting(null);
+    setSelectedPlatform(null);
+    joinStartedAtRef.current = null;
+  };
+
+  const handleJoin = async (m: Meeting, platform: Platform) => {
+    setSelectedMeeting(m);
+    setSelectedPlatform(platform);
+    await saveJoin(m);
+
+    // Open link in new tab
+    const url = platform === "zoom" ? m.joinUrlZoom : m.joinUrlJitsi;
+    if (url) window.open(url, "_blank");
+  };
+
+  // ---------------- Fetch data ----------------
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.classId) return;
 
@@ -121,24 +184,20 @@ export default function StudentDashboard() {
 
                 <div className="flex flex-col gap-2 mt-4">
                   {m.joinUrlZoom && (
-                    <a
-                      href={effectiveZoomUrl(m)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full text-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+                    <button
+                      onClick={() => handleJoin(m, "zoom")}
+                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
                     >
                       Join Zoom
-                    </a>
+                    </button>
                   )}
                   {m.joinUrlJitsi && (
-                    <a
-                      href={m.joinUrlJitsi}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full text-center bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition mt-2"
+                    <button
+                      onClick={() => handleJoin(m, "jitsi")}
+                      className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg shadow hover:bg-black transition mt-2"
                     >
                       Join Jitsi
-                    </a>
+                    </button>
                   )}
                   {!m.joinUrlZoom && !m.joinUrlJitsi && (
                     <span className="text-sm text-red-200">No join link configured.</span>
@@ -146,6 +205,18 @@ export default function StudentDashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Leave button */}
+        {selectedMeeting && (
+          <div className="mt-4">
+            <button
+              onClick={saveLeave}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition"
+            >
+              Leave Meeting
+            </button>
           </div>
         )}
       </section>
@@ -202,7 +273,6 @@ export default function StudentDashboard() {
     </div>
   );
 }
-
 
 
 // "use client";
