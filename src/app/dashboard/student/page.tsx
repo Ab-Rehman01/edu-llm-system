@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type Assignment = {
   _id: string;
@@ -33,10 +33,11 @@ export default function StudentDashboard() {
 
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
+  const [joined, setJoined] = useState(false);
   const joinStartedAtRef = useRef<Date | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
 
-  // ---------------- Attendance helpers ----------------
+  // ---------------- Attendance ----------------
   const saveJoin = async (m: Meeting) => {
     if (!session?.user) return;
     joinStartedAtRef.current = new Date();
@@ -58,9 +59,7 @@ export default function StudentDashboard() {
 
   const saveLeave = async () => {
     if (!selectedMeeting || !session?.user || !joinStartedAtRef.current) return;
-    const leaveTime = new Date();
     const userId = (session.user as any)._id || (session.user as any).id || session.user.email;
-
     try {
       await fetch("/api/attendance/leave", {
         method: "POST",
@@ -73,7 +72,7 @@ export default function StudentDashboard() {
     } catch (err) {
       console.error("Leave save failed", err);
     }
-
+    setJoined(false);
     setSelectedMeeting(null);
     setSelectedPlatform(null);
     joinStartedAtRef.current = null;
@@ -82,13 +81,11 @@ export default function StudentDashboard() {
   const handleJoin = async (m: Meeting, platform: Platform) => {
     setSelectedMeeting(m);
     setSelectedPlatform(platform);
+    setJoined(true);
     await saveJoin(m);
-
-    const url = platform === "zoom" ? m.joinUrlZoom : m.joinUrlJitsi;
-    if (url) window.open(url, "_blank");
   };
 
-  // ---------------- Fetch data ----------------
+  // ---------------- Fetch Data ----------------
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.classId) return;
 
@@ -130,17 +127,12 @@ export default function StudentDashboard() {
         {assignments.length === 0 && <p>No assignments found.</p>}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {assignments.map((a) => (
-            <div
-              key={a._id}
-              className="bg-white rounded-xl shadow hover:shadow-lg transition p-4 flex flex-col gap-3"
-            >
+            <div key={a._id} className="bg-white rounded-xl shadow hover:shadow-lg transition p-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{getFileIcon(a.url)}</span>
                 <div>
                   <p><strong>Subject:</strong> {a.subject}</p>
-                  <p className="text-gray-500 text-sm">
-                    Uploaded: {new Date(a.uploadedAt).toLocaleString()}
-                  </p>
+                  <p className="text-gray-500 text-sm">Uploaded: {new Date(a.uploadedAt).toLocaleString()}</p>
                 </div>
               </div>
               <button
@@ -162,18 +154,12 @@ export default function StudentDashboard() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {meetings.map((m) => (
-              <div
-                key={m._id}
-                className="bg-white rounded-2xl shadow hover:shadow-lg transition p-5 flex flex-col gap-3"
-              >
-                <p className="text-lg font-bold text-gray-800 mb-1">
-                  {(m.topic || "Class Meeting")}
-                </p>
-                <p className="text-gray-600 text-sm">
-                  {m.date} @ {m.time}
-                </p>
+              <div key={m._id} className="bg-white rounded-2xl shadow hover:shadow-lg transition p-5 flex flex-col gap-3">
+                <p className="text-lg font-bold text-gray-800 mb-1">{m.topic || "Class Meeting"}</p>
+                <p className="text-gray-600 text-sm">{m.date} @ {m.time}</p>
                 {m.createdBy && <p className="text-gray-500 text-sm">Created By: {m.createdBy}</p>}
                 {m.createdAt && <p className="text-gray-500 text-sm">Created At: {new Date(m.createdAt).toLocaleString()}</p>}
+
                 <div className="flex flex-col gap-2 mt-3">
                   {m.joinUrlZoom && (
                     <button
@@ -200,15 +186,28 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {selectedMeeting && (
-          <div className="mt-4">
-            <button
-              onClick={saveLeave}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-            >
-              Leave Meeting
-            </button>
-          </div>
+        {/* Jitsi / Zoom iframe */}
+        <div className="mt-6 w-full h-[600px] rounded-xl border flex items-center justify-center bg-gray-100 text-gray-500 text-xl">
+          {joined && selectedMeeting ? (
+            <iframe
+              src={selectedPlatform === "jitsi" ? selectedMeeting.joinUrlJitsi : selectedMeeting.joinUrlZoom}
+              title="Meeting"
+              className="w-full h-full"
+              allow="camera; microphone; fullscreen; display-capture"
+            />
+          ) : (
+            <span>{selectedPlatform === "zoom" ? "Zoom Meeting" : "Jitsi Meeting"}</span>
+          )}
+        </div>
+
+        {/* Leave button */}
+        {joined && selectedMeeting && (
+          <button
+            onClick={saveLeave}
+            className="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+          >
+            Leave Meeting
+          </button>
         )}
       </section>
 
@@ -246,12 +245,7 @@ export default function StudentDashboard() {
           {!selectedAssignment.url.match(/\.(pdf|doc|docx|txt|jpg|jpeg|png|gif|mp4|webm|ogg)$/) && (
             <p>
               File type not supported for inline view.{" "}
-              <a
-                href={selectedAssignment.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
+              <a href={selectedAssignment.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                 Download
               </a>
             </p>
@@ -261,6 +255,7 @@ export default function StudentDashboard() {
     </div>
   );
 }
+
 // "use client";
 
 // import { useSession } from "next-auth/react";
