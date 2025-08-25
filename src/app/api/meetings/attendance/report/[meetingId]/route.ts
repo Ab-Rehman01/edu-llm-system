@@ -1,10 +1,13 @@
 import clientPromise from "@/lib/mongodb";
 import { NextResponse } from "next/server";
 
-export async function GET(
-  req: Request,
-  context: { params: { meetingId: string } }
-) {
+interface RouteContext {
+  params: {
+    meetingId: string;
+  };
+}
+
+export async function GET(req: Request, context: RouteContext) {
   try {
     const client = await clientPromise;
     const db = client.db("education-system");
@@ -15,7 +18,7 @@ export async function GET(
       .toArray();
 
     const report = records.map((r: any) => {
-      let duration = null;
+      let duration: number | null = null;
       if (r.joinTime && r.leaveTime) {
         duration = Math.round(
           (new Date(r.leaveTime).getTime() -
