@@ -307,52 +307,65 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Meetings List */}
-      <div className="bg-white shadow-md rounded-lg p-4 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Meetings</h2>
-        <ul className="space-y-3">
-          {meetings.map((m) => (
-            <li
-              key={m._id}
-              className="p-3 border rounded hover:bg-gray-50 transition"
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="font-semibold">{m.topic}</span> - {m.date}{" "}
-                  {m.time}
-                </div>
-                <div className="space-x-2">
-                  {m.joinUrlZoom && (
-                    <a
-                      href={m.joinUrlZoom}
-                      target="_blank"
-                      className="text-blue-600 underline"
-                    >
-                      Zoom
-                    </a>
-                  )}
-                  {m.joinUrlJitsi && (
-                    <a
-                      href={m.joinUrlJitsi}
-                      target="_blank"
-                      className="text-green-600 underline"
-                    >
-                      Jitsi
-                    </a>
-                  )}
-                  <button
-                    className="text-sm text-indigo-600 underline"
-                    onClick={() => setSelectedMeetingId(m._id)}
-                  >
-                    View Attendance
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
+     {/* Meetings Table */}
+<div className="bg-white shadow-md rounded-lg p-4 mb-6">
+  <h2 className="text-xl font-semibold mb-4">Meetings</h2>
+  {meetings.length === 0 ? (
+    <p>No meetings scheduled.</p>
+  ) : (
+    <table className="w-full border rounded-lg overflow-hidden shadow-sm">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="border p-2 text-left">Title</th>
+          <th className="border p-2 text-left">Date</th>
+          <th className="border p-2 text-left">Time</th>
+          <th className="border p-2 text-left">Platform</th>
+          <th className="border p-2 text-left">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {meetings.map((m) => (
+          <tr key={m._id} className="hover:bg-gray-50 transition">
+            <td className="border p-2 font-semibold">{m.topic || "Class Meeting"}</td>
+            <td className="border p-2">{m.date}</td>
+            <td className="border p-2">{m.time}</td>
+            <td className="border p-2 flex flex-col gap-1">
+              {m.joinUrlZoom && (
+                <a
+                  href={m.joinUrlZoom}
+                  target="_blank"
+                  className="text-blue-600 underline"
+                >
+                  Zoom
+                </a>
+              )}
+              {m.joinUrlJitsi && (
+                <a
+                  href={m.joinUrlJitsi}
+                  target="_blank"
+                  className="text-green-600 underline"
+                >
+                  Jitsi
+                </a>
+              )}
+              {!m.joinUrlZoom && !m.joinUrlJitsi && (
+                <span className="text-red-500">No Link</span>
+              )}
+            </td>
+            <td className="border p-2">
+              <button
+                onClick={() => setSelectedMeetingId(m._id)}
+                className="text-indigo-600 underline text-sm"
+              >
+                View Attendance
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</div>
       {/* Attendance Report */}
       {selectedMeetingId && (
         <div className="bg-white shadow-md rounded-lg p-4">
