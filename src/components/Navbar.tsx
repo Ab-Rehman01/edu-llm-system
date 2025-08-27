@@ -30,7 +30,7 @@ export default function Navbar() {
   return (
     <nav className="bg-blue-600 p-4 text-white">
       <div className="container mx-auto flex justify-between items-center">
-        <h1 className="text-lg font-bold">Edu LLM</h1>
+        <h1 className="text-lg font-bold">Moosa Online Institute</h1>
         <ul className="flex gap-6 items-center">
           {navItems.map((item) => (
             <li key={item.path}>

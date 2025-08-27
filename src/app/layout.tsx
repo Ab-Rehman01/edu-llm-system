@@ -15,14 +15,17 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
+    return (
     <html lang="en">
-       <body className="min-h-screen flex flex-col">
-
+      <body className="min-h-screen flex flex-col">
         <SessionProvider>
-        <Navbar />
-        {children} </SessionProvider>
-        <Footer/>
+          <Navbar />
+          {/* Main wrapper with flex-grow */}
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer />
+        </SessionProvider>
       </body>
     </html>
   );
