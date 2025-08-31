@@ -45,6 +45,21 @@ export default function AdminDashboard() {
 
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
 
+  const [teacherStudents, setTeacherStudents] = useState<User[]>([]);
+const [selectedStudentDetail, setSelectedStudentDetail] = useState<any>(null);
+
+const loadTeacherStudents = async (teacherId: string) => {
+  const res = await fetch(`/api/admin/teachers/${teacherId}/students`);
+  const data = await res.json();
+  setTeacherStudents(data || []);
+};
+
+const loadStudentDetail = async (studentId: string) => {
+  const res = await fetch(`/api/admin/students/${studentId}`);
+  const data = await res.json();
+  setSelectedStudentDetail(data);
+};
+
   const [newMeeting, setNewMeeting] = useState({
     topic: "",
     platform: "zoom",
@@ -179,7 +194,74 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Admin Dashboard</h1>
 
       {/* ---------------- Users Table ---------------- */}
-      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+
+      {/* ---------------- Teachers ---------------- */}
+<div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+  <h2 className="text-xl font-semibold p-4 border-b">Teachers</h2>
+  <table className="w-full table-auto">
+    <thead className="bg-gray-100">
+      <tr>
+        <th className="border p-2 text-left">Name</th>
+        <th className="border p-2 text-left">Email</th>
+        <th className="border p-2 text-left">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {users.filter(u => u.role === "teacher").map((teacher) => (
+        <tr key={teacher._id}>
+          <td className="border p-2">{teacher.name}</td>
+          <td className="border p-2">{teacher.email}</td>
+          <td className="border p-2">
+            <button
+              onClick={() => loadTeacherStudents(teacher._id)}
+              className="text-blue-600 underline"
+            >
+              View Students
+            </button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+{/* ---------------- Students ---------------- */}
+<div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+  <h2 className="text-xl font-semibold p-4 border-b">Students</h2>
+  <table className="w-full table-auto">
+    <thead className="bg-gray-100">
+      <tr>
+        <th className="border p-2 text-left">Name</th>
+        <th className="border p-2 text-left">Email</th>
+        <th className="border p-2 text-left">Teacher</th>
+        <th className="border p-2 text-left">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {users.filter(u => u.role === "student").map((student) => (
+        <tr key={student._id}>
+          <td className="border p-2">{student.name}</td>
+          <td className="border p-2">{student.email}</td>
+          <td className="border p-2">
+            {/* find teacher name */}
+            {users.find(t => t._id === student.teacherId)?.name || "Not Assigned"}
+          </td>
+          <td className="border p-2">
+            <button
+              onClick={() => loadStudentDetail(student._id)}
+              className="text-indigo-600 underline"
+            >
+              View Portal
+            </button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+      
+      
+      {/*<div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <h2 className="text-xl font-semibold p-4 border-b">Users</h2>
         <table className="w-full table-auto">
           <thead className="bg-gray-100">
@@ -250,7 +332,7 @@ export default function AdminDashboard() {
             ))}
           </tbody>
         </table>
-      </div>
+      </div> */}
 
       {/* ---------------- Class Management ---------------- */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
