@@ -9,6 +9,8 @@ type User = {
   email: string;
   role: string;
   classId?: string;
+    teacherId?: string; 
+
 };
 
 type ClassItem = {
@@ -33,6 +35,7 @@ type AttendanceRecord = {
   joinTime: string;
   leaveTime?: string;
   duration?: number | null;
+
 };
 
 export default function AdminDashboard() {

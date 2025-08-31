@@ -2,14 +2,19 @@
 // app/api/admin/students/[id]/route.ts
 import { NextResponse } from "next/server"
 
+type Params = {
+  params: { id: string }
+}
+
 // GET /api/admin/students/[id]
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: Request, { params }: Params) {
   try {
-    const { id } = params
-    const student = { id, name: "Ali", class: "10th", email: "ali@example.com" }
+    const student = {
+      id: params.id,
+      name: "Ali",
+      class: "10th",
+      email: "ali@example.com",
+    }
 
     return NextResponse.json(student, { status: 200 })
   } catch (error) {
@@ -21,14 +26,10 @@ export async function GET(
 }
 
 // DELETE /api/admin/students/[id]
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: Request, { params }: Params) {
   try {
-    const { id } = params
     return NextResponse.json(
-      { message: `Student with id ${id} deleted` },
+      { message: `Student with id ${params.id} deleted` },
       { status: 200 }
     )
   } catch (error) {
