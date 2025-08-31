@@ -117,15 +117,21 @@ const loadStudentDetail = async (studentId: string) => {
   }, [selectedMeetingId]);
 
   // ---------------- Update User ----------------
-  const updateUser = async (userId: string, updates: { role: string; classId: string }) => {
-    await fetch("/api/users/update", {
-      method: "POST",
+const updateUser = async (userId: string, role: "admin" | "student" | "teacher") => {
+  try {
+    await fetch(`/api/users/${userId}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, ...updates }),
+      body: JSON.stringify({ role }),
     });
 
-    setUsers(users.map((u) => (u._id === userId ? { ...u, ...updates } : u)));
-  };
+    setUsers(users.map(u =>
+      u._id === userId ? { ...u, role } : u
+    ));
+  } catch (err) {
+    console.error("Error updating user:", err);
+  }
+};
 
   // ---------------- Save New Meeting ----------------
   const saveMeeting = async () => {
@@ -284,7 +290,7 @@ const loadStudentDetail = async (studentId: string) => {
 </div>
       
       
-      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+     <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <h2 className="text-xl font-semibold p-4 border-b">Users</h2>
         <table className="w-full table-auto">
           <thead className="bg-gray-100">
@@ -304,13 +310,12 @@ const loadStudentDetail = async (studentId: string) => {
                 <td className="border p-2">
                   <select
                     value={user.role}
-                    onChange={(e) =>
-                      setUsers(
-                        users.map((u) =>
-                          u._id === user._id ? { ...u, role: e.target.value } : u
-                        )
-                      )
-                    }
+                    onChange={(e) => {
+                      const newRole = e.target.value as User["role"];
+                      setUsers(users.map(u =>
+                        u._id === user._id ? { ...u, role: newRole } : u
+                      ));
+                    }}
                     className="border p-1 rounded"
                   >
                     <option value="student">Student</option>
@@ -322,11 +327,9 @@ const loadStudentDetail = async (studentId: string) => {
                   <select
                     value={user.classId || ""}
                     onChange={(e) =>
-                      setUsers(
-                        users.map((u) =>
-                          u._id === user._id ? { ...u, classId: e.target.value } : u
-                        )
-                      )
+                      setUsers(users.map(u =>
+                        u._id === user._id ? { ...u, classId: e.target.value } : u
+                      ))
                     }
                     className="border p-1 rounded"
                   >
@@ -340,12 +343,7 @@ const loadStudentDetail = async (studentId: string) => {
                 </td>
                 <td className="border p-2">
                   <button
-                    onClick={() =>
-                      updateUser(user._id, {
-                        role: user.role,
-                        classId: user.classId || "",
-                      })
-                    }
+                    onClick={() => updateUser(user._id, user.role)}
                     className="text-blue-600 underline cursor-pointer"
                   >
                     Update
@@ -356,6 +354,7 @@ const loadStudentDetail = async (studentId: string) => {
           </tbody>
         </table>
       </div>
+
 
       {/* ---------------- Class Management ---------------- */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
