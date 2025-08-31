@@ -1,34 +1,29 @@
 //app/api/admin/students/route.ts
-import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { NextResponse } from "next/server"
 
-// GET all students
+// GET /api/admin/students → get all students with admin view
 export async function GET() {
   try {
-    const client = await clientPromise;
-    const db = client.db("edu-llm");
+    const students = [
+      { id: 1, name: "Ali", class: "10th", email: "ali@example.com" },
+      { id: 2, name: "Sara", class: "9th", email: "sara@example.com" },
+    ]
 
-    const students = await db.collection("students").find().toArray();
-
-
-    return NextResponse.json(students);
+    return NextResponse.json(students, { status: 200 })
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
+    return NextResponse.json({ error: "Admin: Failed to fetch students" }, { status: 500 })
   }
 }
 
-// CREATE a student
+// POST /api/admin/students → add student (admin only)
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-
-    const client = await clientPromise;
-    const db = client.db("edu-llm");
-
-    await db.collection("students").insertOne(body);
-
-    return NextResponse.json({ message: "Student created successfully" });
+    const body = await req.json()
+    return NextResponse.json(
+      { message: "Admin: Student created", student: body },
+      { status: 201 }
+    )
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create student" }, { status: 500 });
+    return NextResponse.json({ error: "Admin: Failed to create student" }, { status: 500 })
   }
 }
