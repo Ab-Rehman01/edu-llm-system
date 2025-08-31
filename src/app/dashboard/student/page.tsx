@@ -118,7 +118,11 @@ export default function StudentDashboard() {
     if (url.match(/\.(mp4|webm|ogg)$/)) return "🎬";
     return "📎";
   };
-
+if (loading) return (
+  <div className="flex justify-center items-center h-screen">
+    <div className="loader"></div> {/* Tailwind spinner ya custom CSS spinner */}
+  </div>
+);
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Student Dashboard</h1>
@@ -216,8 +220,9 @@ export default function StudentDashboard() {
       {/* Selected Assignment View */}
       {selectedAssignment && (
         <section className="mt-6 bg-white p-4 rounded-xl shadow">
-          <h2 className="text-xl font-semibold mb-2">Viewing: {selectedAssignment.filename}</h2>
-          <p className="text-gray-600 mb-2">
+         <h2 className="text-xl font-semibold mb-2">
+  Viewing: {selectedAssignment.filename || selectedAssignment.subject}
+</h2>          <p className="text-gray-600 mb-2">
             <strong>Uploaded At:</strong> {new Date(selectedAssignment.uploadedAt).toLocaleString()}
           </p>
 
