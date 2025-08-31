@@ -300,9 +300,63 @@ const handleTeacherAssign = async (studentId: string, teacherId: string) => {
     </tbody>
   </table>
 </div>
-      
-      
-     <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+      {/* ---------------- Selected Student Portal ---------------- */}
+{selectedStudentDetail && (
+  <div className="bg-white shadow rounded-lg p-4 mb-6">
+    <h2 className="text-xl font-semibold mb-4">
+      {selectedStudentDetail.name}'s Portal
+    </h2>
+
+    <div className="mb-4">
+      <h3 className="font-semibold">Assigned Teachers</h3>
+      {teacherStudents.length === 0 ? (
+        <p>No teachers assigned yet.</p>
+      ) : (
+        <ul className="list-disc pl-5">
+          {teacherStudents.map((t) => (
+            <li key={t._id}>{t.name} ({t.email})</li>
+          ))}
+        </ul>
+      )}
+    </div>
+
+    <div>
+      <h3 className="font-semibold mb-2">Assignments</h3>
+      {selectedStudentDetail.assignments?.length === 0 ? (
+        <p>No assignments given yet.</p>
+      ) : (
+        <table className="w-full border rounded">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border p-2">Subject</th>
+              <th className="border p-2">Teacher</th>
+              <th className="border p-2">File</th>
+              <th className="border p-2">Uploaded At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {selectedStudentDetail.assignments.map((a: any) => (
+              <tr key={a._id} className="hover:bg-gray-50">
+                <td className="border p-2">{a.subject}</td>
+                <td className="border p-2">
+                  {teacherStudents.find(t => t._id === a.teacherId)?.name || "Unknown"}
+                </td>
+                <td className="border p-2">
+                  <a href={a.url} target="_blank" className="text-blue-600 underline">
+                    {a.filename || "View"}
+                  </a>
+                </td>
+                <td className="border p-2">{new Date(a.uploadedAt).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </div>
+)}
+  {/* user list detail     */}
+  <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <h2 className="text-xl font-semibold p-4 border-b">Users</h2>
         <table className="w-full table-auto">
           <thead className="bg-gray-100">

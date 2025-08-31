@@ -1,3 +1,5 @@
+
+//dashboard/teacher
 "use client";
 import RoleProtectedRoute from "@/components/RoleProtectedRoute";
 
