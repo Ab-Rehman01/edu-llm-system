@@ -7,7 +7,8 @@ type User = {
   _id: string;
   name: string;
   email: string;
-  role: string;
+
+  role: "admin" | "teacher" | "student";
   classId?: string;
     teacherId?: string; 
 
@@ -227,7 +228,6 @@ const loadStudentDetail = async (studentId: string) => {
     </tbody>
   </table>
 </div>
-
 {/* ---------------- Students ---------------- */}
 <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
   <h2 className="text-xl font-semibold p-4 border-b">Students</h2>
@@ -246,8 +246,28 @@ const loadStudentDetail = async (studentId: string) => {
           <td className="border p-2">{student.name}</td>
           <td className="border p-2">{student.email}</td>
           <td className="border p-2">
-            {/* find teacher name */}
-            {users.find(t => t._id === student.teacherId)?.name || "Not Assigned"}
+            <select
+              value={student.teacherId || ""}
+              onChange={async (e) => {
+                const teacherId = e.target.value;
+                await fetch("/api/users/assign-teacher", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ studentId: student._id, teacherId }),
+                });
+                setUsers(users.map(u =>
+                  u._id === student._id ? { ...u, teacherId } : u
+                ));
+              }}
+              className="border p-1 rounded"
+            >
+              <option value="">Not Assigned</option>
+              {users.filter(u => u.role === "teacher").map((teacher) => (
+                <option key={teacher._id} value={teacher._id}>
+                  {teacher.name}
+                </option>
+              ))}
+            </select>
           </td>
           <td className="border p-2">
             <button
@@ -264,7 +284,7 @@ const loadStudentDetail = async (studentId: string) => {
 </div>
       
       
-      {/*<div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
         <h2 className="text-xl font-semibold p-4 border-b">Users</h2>
         <table className="w-full table-auto">
           <thead className="bg-gray-100">
@@ -335,7 +355,7 @@ const loadStudentDetail = async (studentId: string) => {
             ))}
           </tbody>
         </table>
-      </div> */}
+      </div>
 
       {/* ---------------- Class Management ---------------- */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
