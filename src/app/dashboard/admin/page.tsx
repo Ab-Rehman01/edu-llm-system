@@ -40,6 +40,7 @@ type AttendanceRecord = {
 };
 
 export default function AdminDashboard() {
+  
   const [users, setUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
@@ -117,19 +118,40 @@ const loadStudentDetail = async (studentId: string) => {
   }, [selectedMeetingId]);
 
   // ---------------- Update User ----------------
-const updateUser = async (userId: string, role: "admin" | "student" | "teacher") => {
+const handleUserUpdate = async (user: User) => {
   try {
-    await fetch(`/api/users/${userId}`, {
+    const res = await fetch(`/api/users/${user._id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
+      body: JSON.stringify({ role: user.role, classId: user.classId }),
     });
+    if (!res.ok) throw new Error("Update failed");
 
-    setUsers(users.map(u =>
-      u._id === userId ? { ...u, role } : u
-    ));
+    const data = await res.json();
+    alert(data.message);
+
+    setUsers(users.map(u => u._id === user._id ? user : u));
   } catch (err) {
-    console.error("Error updating user:", err);
+    console.error(err);
+    alert("User update failed");
+  }
+};
+// assign teacher
+const handleTeacherAssign = async (studentId: string, teacherId: string) => {
+  try {
+    const res = await fetch("/api/users/assign-teacher", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, teacherId }),
+    });
+    if (!res.ok) throw new Error("Failed to assign teacher");
+
+    const data = await res.json();
+    setUsers(users.map(u => u._id === studentId ? { ...u, teacherId } : u));
+    alert(data.message);
+  } catch (err) {
+    console.error(err);
+    alert("Teacher assignment failed");
   }
 };
 
@@ -253,27 +275,17 @@ const updateUser = async (userId: string, role: "admin" | "student" | "teacher")
           <td className="border p-2">{student.email}</td>
           <td className="border p-2">
             <select
-              value={student.teacherId || ""}
-              onChange={async (e) => {
-                const teacherId = e.target.value;
-                await fetch("/api/users/assign-teacher", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ studentId: student._id, teacherId }),
-                });
-                setUsers(users.map(u =>
-                  u._id === student._id ? { ...u, teacherId } : u
-                ));
-              }}
-              className="border p-1 rounded"
-            >
-              <option value="">Not Assigned</option>
-              {users.filter(u => u.role === "teacher").map((teacher) => (
-                <option key={teacher._id} value={teacher._id}>
-                  {teacher.name}
-                </option>
-              ))}
-            </select>
+  value={student.teacherId || ""}
+  onChange={async (e) => handleTeacherAssign(student._id, e.target.value)}
+  className="border p-1 rounded"
+>
+  <option value="">Not Assigned</option>
+  {users.filter(u => u.role === "teacher").map((teacher) => (
+    <option key={teacher._id} value={teacher._id}>
+      {teacher.name}
+    </option>
+  ))}
+</select>
           </td>
           <td className="border p-2">
             <button
@@ -342,12 +354,14 @@ const updateUser = async (userId: string, role: "admin" | "student" | "teacher")
                   </select>
                 </td>
                 <td className="border p-2">
-                  <button
-                    onClick={() => updateUser(user._id, user.role)}
-                    className="text-blue-600 underline cursor-pointer"
-                  >
-                    Update
-                  </button>
+                 <td className="border p-2">
+  <button
+    onClick={() => handleUserUpdate(user)}
+    className="text-blue-600 underline cursor-pointer"
+  >
+    Update
+  </button>
+</td>
                 </td>
               </tr>
             ))}

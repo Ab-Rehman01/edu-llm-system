@@ -1,3 +1,5 @@
+//dashboard/student/page
+
 "use client";
 
 import { useSession } from "next-auth/react";
