@@ -94,6 +94,17 @@ const [selectedDays, setSelectedDays] = useState<string[]>([]);
       .catch(() => {});
   }, []);
 
+
+  const loadUsers = async () => {
+    const res = await fetch("/api/users/list");
+    const data = await res.json();
+    setUsers(data.users || []); // backend se { users: [...] }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
   // ---------------- Fetch Classes ----------------
   const loadClasses = async () => {
     try {
