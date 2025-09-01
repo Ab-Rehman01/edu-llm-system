@@ -69,7 +69,7 @@ export default function AdminDashboard() {
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<any>(null);
 
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
-  const [selectedDay, setSelectedDay] = useState<string>("Mon");
+const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState<string>("");
   const [endTime, setEndTime] = useState<string>("");
 
@@ -132,24 +132,27 @@ export default function AdminDashboard() {
       .catch(() => {});
   }, [selectedMeetingId]);
 
-  // ---------------- Update User ----------------
-  const handleUserUpdate = async (user: User) => {
-    try {
-      const res = await fetch(`/api/users/${user._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: user.role, classId: user.classId }),
-      });
-      if (!res.ok) throw new Error("Update failed");
+ // ---------------- Update User ----------------
+const handleUserUpdate = async (user: User) => {
+  try {
+    const res = await fetch(`/api/users/update-role`, {
+      method: "POST", // yahan PUT ki jagah POST
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user._id, role: user.role }),
+    });
 
-      const data = await res.json();
-      alert(data.message);
-      setUsers((prev) => prev.map((u) => (u._id === user._id ? user : u)));
-    } catch (err) {
-      console.error(err);
-      alert("User update failed");
-    }
-  };
+    if (!res.ok) throw new Error("Update failed");
+
+    const data = await res.json();
+    alert(data.message);
+
+    // state update
+    setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, role: user.role } : u)));
+  } catch (err) {
+    console.error(err);
+    alert("User update failed");
+  }
+};
 
   // ---------------- Assign teacher (simple) ----------------
   const handleTeacherAssign = async (studentId: string, teacherId: string) => {
@@ -228,77 +231,78 @@ export default function AdminDashboard() {
 
   // ---------------- Assign Teacher with Schedule ----------------
   const assignTeacherWithSchedule = async (studentId: string) => {
-    if (!studentId) {
-      alert("Select a student first (open student portal).");
-      return;
-    }
-    if (!selectedTeacherId || !selectedDay || !startTime || !endTime) {
-      alert("Select teacher, day, and time");
-      return;
-    }
+  if (!studentId) {
+    alert("Select a student first (open student portal).");
+    return;
+  }
+  if (!selectedTeacherId || selectedDays.length === 0 || !startTime || !endTime) {
+    alert("Select teacher, at least one day, and time");
+    return;
+  }
 
-    try {
-      const res = await fetch("/api/users/assign-teacher-schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId,
-          teacherId: selectedTeacherId,
-          schedule: {
-            day: selectedDay,
-            time: `${startTime}-${endTime}`,
-          },
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to assign");
+  try {
+    // multiple schedules generate
+    const schedules = selectedDays.map((day) => ({
+      day,
+      time: `${startTime}-${endTime}`,
+    }));
 
-      const data = await res.json();
-      alert(data.message);
+    const res = await fetch("/api/users/assign-teacher-schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        studentId,
+        teacherId: selectedTeacherId,
+        schedule: schedules, // array send
+      }),
+    });
+    if (!res.ok) throw new Error("Failed to assign");
 
-      // update local state
-      setUsers((prev) =>
-        prev.map((u) =>
-          u._id === studentId
-            ? {
-                ...u,
-                teacherId: selectedTeacherId,
-                schedule: [
-                  ...(u.schedule || []),
-                  {
-                    day: selectedDay,
-                    time: `${startTime}-${endTime}`,
-                    teacherId: selectedTeacherId,
-                    studentId,
-                  },
-                ],
-              }
-            : u
-        )
-      );
+    const data = await res.json();
+    alert(data.message);
 
-      // also reflect in selectedStudentDetail if open
-      setSelectedStudentDetail((prev: any) =>
-        prev && prev._id === studentId
+    // update local state
+    setUsers((prev) =>
+      prev.map((u) =>
+        u._id === studentId
           ? {
-              ...prev,
+              ...u,
               teacherId: selectedTeacherId,
-              schedule: [
-                ...(prev.schedule || []),
-                {
-                  day: selectedDay,
-                  time: `${startTime}-${endTime}`,
-                  teacherId: selectedTeacherId,
-                  studentId,
-                },
-              ],
+              schedule: [...(u.schedule || []), ...schedules.map((s) => ({ ...s, teacherId: selectedTeacherId, studentId }))],
             }
-          : prev
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Assignment failed");
-    }
-  };
+          : u
+      )
+    );
+      <select
+  multiple
+  value={selectedDays}
+  onChange={(e) =>
+    setSelectedDays(Array.from(e.target.selectedOptions, (option) => option.value))
+  }
+  className="border p-1 rounded"
+>
+  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+    <option key={d} value={d}>
+      {d}
+    </option>
+  ))}
+</select>
+
+       // also update selectedStudentDetail
+    setSelectedStudentDetail((prev: any) =>
+      prev && prev._id === studentId
+        ? {
+            ...prev,
+            teacherId: selectedTeacherId,
+            schedule: [...(prev.schedule || []), ...schedules.map((s) => ({ ...s, teacherId: selectedTeacherId, studentId }))],
+          }
+        : prev
+    );
+  } catch (err) {
+    console.error(err);
+    alert("Assignment failed");
+  }
+};
 
   // ---------------- Save New Meeting ----------------
   const saveMeeting = async () => {
@@ -511,17 +515,20 @@ export default function AdminDashboard() {
               </select>
 
               <select
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                className="border p-1 rounded"
-              >
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-
+  multiple
+  value={selectedDays}
+  onChange={(e) =>
+    setSelectedDays(Array.from(e.target.selectedOptions, option => option.value))
+  }
+>
+  <option value="Monday">Monday</option>
+  <option value="Tuesday">Tuesday</option>
+  <option value="Wednesday">Wednesday</option>
+  <option value="Thursday">Thursday</option>
+  <option value="Friday">Friday</option>
+  <option value="Saturday">Saturday</option>
+  <option value="Sunday">Sunday</option>
+</select>
               <input
                 type="time"
                 value={startTime}
