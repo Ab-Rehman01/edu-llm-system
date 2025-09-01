@@ -1,4 +1,4 @@
-// src/app/api/users/assign-teacher-sch/route.ts
+// src/app/api/users/assign-teacher-schedule/route.ts
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";

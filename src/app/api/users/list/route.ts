@@ -10,7 +10,7 @@ export async function GET() {
     const db = client.db("education-system");
     const users = await db.collection("users").find().toArray();
 
-    return NextResponse.json(users);
+    return NextResponse.json({ users });
   } catch {
     return NextResponse.json({ message: "Failed to fetch users" }, { status: 500 });
   }
