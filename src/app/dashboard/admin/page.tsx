@@ -546,11 +546,12 @@ const handleUserUpdate = async (user: User) => {
               />
 
               <button
-                onClick={() => assignTeacherWithSchedule(selectedStudentDetail._id)}
-                className="bg-blue-600 text-white px-3 py-1 rounded"
-              >
-                Assign
-              </button>
+  onClick={() =>
+    assignTeacherWithSchedule(selectedStudentDetail?._id || "")
+  }
+>
+  Assign
+</button>
             </div>
           </div>
 
