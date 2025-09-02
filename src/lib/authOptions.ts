@@ -7,7 +7,9 @@ import type { NextAuthOptions } from "next-auth";
 import { compare } from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(clientPromise),
+  adapter: MongoDBAdapter(clientPromise, {
+  databaseName: "edu-llm-system", // apna DB name yahan dalen
+}),
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
