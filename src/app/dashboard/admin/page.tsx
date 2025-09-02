@@ -505,7 +505,7 @@ const handleUserUpdate = async (user: User) => {
       {selectedStudentDetail && (
         <div className="bg-white shadow rounded-lg p-4 mb-6">
           <h2 className="text-xl font-semibold mb-4">
-            {selectedStudentDetail.name}'s Portalssssssssssss
+            {selectedStudentDetail.name}'s Portal
           </h2>
 
           {/* Assign teacher + schedule for this selected student */}
