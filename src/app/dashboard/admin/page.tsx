@@ -93,10 +93,10 @@ const [selectedDays, setSelectedDays] = useState<string[]>([]);
       .then((data) => setUsers(data.users || data))
       .catch(() => {});
   }, []);
-
 const loadUsers = async () => {
   const res = await fetch("/api/users/list", {
-    cache: "no-store", // cache disable
+    
+    cache: "no-store", // 🚫 koi cache nahi
   });
   const data = await res.json();
   setUsers(data.users || data);
