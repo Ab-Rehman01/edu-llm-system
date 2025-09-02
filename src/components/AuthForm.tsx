@@ -1,8 +1,6 @@
 // components/AuthForm.tsx
 "use client";
 
-
-"use client";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { FcGoogle } from "react-icons/fc";
@@ -23,22 +21,46 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Basic validation
-    if (mode === "signup" && !formData.name) {
-      setError("Name is required");
-      return;
-    }
-    if (!formData.email || !formData.password) {
-      setError("Email and password are required");
-      return;
-    }
+    try {
+      if (mode === "signin") {
+        // ✅ Login with NextAuth credentials provider
+        const result = await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: true,
+          callbackUrl: "/",
+        });
 
-    setError("");
-    console.log("Form submitted", formData);
-    // TODO: integrate your backend API or NextAuth credentials login
+        if (result?.error) setError("Invalid email or password");
+      } else {
+        // ✅ Signup API call
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+
+        if (!res.ok) {
+          const { error } = await res.json();
+          setError(error || "Signup failed");
+          return;
+        }
+
+        // Auto login after signup
+        await signIn("credentials", {
+          email: formData.email,
+          password: formData.password,
+          redirect: true,
+          callbackUrl: "/",
+        });
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+      setError("Something went wrong");
+    }
   };
 
   return (
@@ -53,8 +75,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
               onChange={handleChange}
               placeholder=" "
               className="peer w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              required
             />
-            <label className="absolute left-4 top-3 text-gray-400 text-sm transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-blue-500 peer-focus:text-xs">
+            <label className="absolute left-4 top-3 text-gray-400 text-sm transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-blue-500 peer-focus:text-xs">
               Full Name
             </label>
           </div>
@@ -68,8 +91,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
             onChange={handleChange}
             placeholder=" "
             className="peer w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
           />
-          <label className="absolute left-4 top-3 text-gray-400 text-sm transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-blue-500 peer-focus:text-xs">
+          <label className="absolute left-4 top-3 text-gray-400 text-sm transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-blue-500 peer-focus:text-xs">
             Email
           </label>
         </div>
@@ -82,8 +106,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
             onChange={handleChange}
             placeholder=" "
             className="peer w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
           />
-          <label className="absolute left-4 top-3 text-gray-400 text-sm transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-blue-500 peer-focus:text-xs">
+          <label className="absolute left-4 top-3 text-gray-400 text-sm transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-sm peer-focus:top-0 peer-focus:text-blue-500 peer-focus:text-xs">
             Password
           </label>
         </div>
@@ -105,9 +130,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
         <hr className="flex-grow border-gray-300" />
       </div>
 
-      {/* Google login button */}
+      {/* Google login */}
       <button
-        onClick={() => signIn("google")}
+        onClick={() => signIn("google", { callbackUrl: "/" })}
         className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-100 transition"
       >
         <FcGoogle className="w-5 h-5" />
