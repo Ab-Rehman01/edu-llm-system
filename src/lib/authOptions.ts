@@ -1,5 +1,4 @@
 // src/lib/authOptions.ts
-// src/lib/authOptions.ts
 import { MongoDBAdapter } from "@next-auth/mongodb-adapter";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -22,8 +21,9 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         const client = await clientPromise;
-        const user = await client.db().collection("users").findOne({ email: credentials?.email });
+        const db = client.db(process.env.MONGODB_DB || "education-system");
 
+        const user = await db.collection("users").findOne({ email: credentials?.email });
         if (!user) throw new Error("User not found");
 
         const isValid = await compare(credentials!.password, user.password);
@@ -31,6 +31,7 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user._id.toString(),
+          name: user.name,
           email: user.email,
           role: user.role || "student",
         };
@@ -42,11 +43,17 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.role = (user as any).role || "student";
+      if (user) {
+        token.role = (user as any).role || "student";
+        token.name = (user as any).name;
+      }
       return token;
     },
     async session({ session, token }) {
-      if (token) (session.user as any).role = token.role;
+      if (token) {
+        (session.user as any).role = token.role;
+        session.user.name = token.name as string;
+      }
       return session;
     },
   },

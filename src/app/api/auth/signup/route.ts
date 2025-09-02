@@ -1,4 +1,3 @@
-//api/auth/signup/route.ts
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import clientPromise from "@/lib/mongodb";
@@ -7,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const { name, email, password } = await req.json();
     const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB);
+    const db = client.db(process.env.MONGODB_DB || "education-system");
 
     const existingUser = await db.collection("users").findOne({ email });
     if (existingUser) {
@@ -20,6 +19,7 @@ export async function POST(req: Request) {
       name,
       email,
       password: hashedPassword,
+      role: "student",
       createdAt: new Date(),
     });
 
