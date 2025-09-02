@@ -2,7 +2,6 @@
 
 "use client";
 import AuthForm from "@/components/AuthForm";
-import { signIn } from "next-auth/react";
 
 export default function SignInPage() {
   return (
@@ -28,34 +27,8 @@ export default function SignInPage() {
 
       {/* Right Column - Form */}
       <div className="flex w-full md:w-2/5 items-center justify-center p-8 bg-gray-100">
-        <div className="bg-white shadow-xl rounded-xl p-8 w-full max-w-md">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-            Sign In to Your Account
-          </h2>
+        <div className="w-full max-w-md">
           <AuthForm mode="signin" />
-
-          {/* Divider */}
-          <div className="flex items-center my-6">
-            <hr className="flex-grow border-gray-300" />
-            <span className="mx-2 text-gray-400 text-sm">or</span>
-            <hr className="flex-grow border-gray-300" />
-          </div>
-
-          {/* Google / Multi-login button */}
-          <button
-            onClick={() => signIn("google")}
-            className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-100 transition"
-          >
-            <img src="/google-icon.svg" alt="Google" className="w-5 h-5" />
-            Sign in with Google
-          </button>
-
-          <p className="text-center text-gray-500 text-sm mt-4">
-            Don't have an account?{" "}
-            <a href="/signup" className="text-blue-500 hover:underline">
-              Sign Up
-            </a>
-          </p>
         </div>
       </div>
     </div>
