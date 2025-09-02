@@ -25,7 +25,7 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Column - Form */}
-      <div className="flex w-full md:w-2/5 items-center justify-center p-8 bg-gray-100">
+      <div className="flex w-full md:w-2/5 items-center justify-center p-8 bg-gray-110">
         <div className="w-full max-w-md">
           <AuthForm mode="signup" />
         </div>
