@@ -94,17 +94,17 @@ const [selectedDays, setSelectedDays] = useState<string[]>([]);
       .catch(() => {});
   }, []);
 
+const loadUsers = async () => {
+  const res = await fetch("/api/users/list", {
+    cache: "no-store", // cache disable
+  });
+  const data = await res.json();
+  setUsers(data.users || data);
+};
 
-  const loadUsers = async () => {
-    const res = await fetch("/api/users/list");
-    const data = await res.json();
-    setUsers(data.users || []); // backend se { users: [...] }
-  };
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
+useEffect(() => {
+  loadUsers(); // ✅ yahan call karna zaroori hai
+}, []);
   // ---------------- Fetch Classes ----------------
   const loadClasses = async () => {
     try {
