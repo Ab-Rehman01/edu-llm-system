@@ -9,7 +9,7 @@ export default function SignUpPage() {
       {/* Left Column - Image with gradient overlay */}
       <div className="hidden md:flex md:w-3/5 relative">
         <img
-          src="/institute-image.jpg" // Replace with your institute image
+          src="https://thumbs.dreamstime.com/b/creative-education-sketch-concrete-wall-wallpaper-freehand-drawing-school-items-back-to-concept-256429630.jpg" // Replace with your institute image
           alt="Institute"
           className="object-cover w-full h-full"
         />
