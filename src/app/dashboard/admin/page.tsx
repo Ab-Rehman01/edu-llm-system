@@ -620,7 +620,7 @@ export default function AdminDashboard() {
         <table className="w-full table-auto">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border p-2 text-left">Name</th>
+              <th className="border p-2 text-left">Name </th>
               <th className="border p-2 text-left">Email</th>
               <th className="border p-2 text-left">Role</th>
               <th className="border p-2 text-left">Class</th>
