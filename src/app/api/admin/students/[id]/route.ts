@@ -1,19 +1,24 @@
 // app/api/admin/students/[id]/route.ts
-// app/api/admin/students/[id]/route.ts
 import { NextResponse } from "next/server"
+import clientPromise from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
 
-type Params = {
-  params: { id: string }
-}
+type Params = { params: { id: string } }
 
-// GET /api/admin/students/[id]
 export async function GET(req: Request, { params }: Params) {
   try {
-    const student = {
-      id: params.id,
-      name: "Ali",
-      class: "10th",
-      email: "ali@example.com",
+    const client = await clientPromise
+    const db = client.db("education-system")
+
+    const student = await db
+      .collection("students")
+      .findOne({ _id: new ObjectId(params.id) })
+
+    if (!student) {
+      return NextResponse.json(
+        { error: "Student not found" },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json(student, { status: 200 })
@@ -25,9 +30,22 @@ export async function GET(req: Request, { params }: Params) {
   }
 }
 
-// DELETE /api/admin/students/[id]
 export async function DELETE(req: Request, { params }: Params) {
   try {
+    const client = await clientPromise
+    const db = client.db("education-system")
+
+    const result = await db
+      .collection("students")
+      .deleteOne({ _id: new ObjectId(params.id) })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: "Student not found" },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json(
       { message: `Student with id ${params.id} deleted` },
       { status: 200 }
