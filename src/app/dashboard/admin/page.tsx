@@ -146,26 +146,42 @@ export default function AdminDashboard() {
 
   // ---------------- Update User ----------------
   const handleUserUpdate = async (user: User) => {
-    try {
-      const res = await fetch(`/api/users/update-role`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user._id, role: user.role }),
-      });
+  try {
+    const res = await fetch(`/api/users/${user._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role: user.role,
+        classId: user.classId || null,
+      }),
+    });
 
-      if (!res.ok) throw new Error("Update failed");
+    const data = await res.json();
+    alert(data.message);
+  } catch (err) {
+    console.error("Update error:", err);
+    alert("Error updating user");
+  }
+};
 
-      const data = await res.json();
-      alert(data.message);
+// ❌ Delete user
+const handleUserDelete = async (id: string) => {
+  if (!confirm("Are you sure you want to delete this user?")) return;
 
-      // state update
-      setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, role: user.role } : u)));
-    } catch (err) {
-      console.error(err);
-      alert("User update failed");
+  try {
+    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+    const data = await res.json();
+
+    alert(data.message);
+
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u._id !== id)); // frontend state se bhi remove
     }
-  };
-
+  } catch (err) {
+    console.error("Delete error:", err);
+    alert("Error deleting user");
+  }
+};
   // ---------------- Assign teacher (simple) ----------------
   const handleTeacherAssign = async (studentId: string, teacherId: string) => {
     try {
@@ -616,73 +632,82 @@ export default function AdminDashboard() {
 
       {/* ---------------- Users (All) ---------------- */}
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
-        <h2 className="text-xl font-semibold p-4 border-b">Users</h2>
-        <table className="w-full table-auto">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Name </th>
-              <th className="border p-2 text-left">Email</th>
-              <th className="border p-2 text-left">Role</th>
-              <th className="border p-2 text-left">Class</th>
-              <th className="border p-2 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user._id} className="hover:bg-gray-50 transition">
-                <td className="border p-2">{user.name}</td>
-                <td className="border p-2">{user.email}</td>
-                <td className="border p-2">
-                  <select
-                    value={user.role}
-                    onChange={(e) => {
-                      const newRole = e.target.value as User["role"];
-                      setUsers((prev) =>
-                        prev.map((u) =>
-                          u._id === user._id ? { ...u, role: newRole } : u
-                        )
-                      );
-                    }}
-                    className="border p-1 rounded"
-                  >
-                    <option value="student">Student</option>
-                    <option value="teacher">Teacher</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </td>
-                <td className="border p-2">
-                  <select
-                    value={user.classId || ""}
-                    onChange={(e) =>
-                      setUsers((prev) =>
-                        prev.map((u) =>
-                          u._id === user._id ? { ...u, classId: e.target.value } : u
-                        )
-                      )
-                    }
-                    className="border p-1 rounded"
-                  >
-                    <option value="">No Class</option>
-                    {classes.map((cls) => (
-                      <option key={cls._id} value={cls._id}>
-                        {cls.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="border p-2">
-                  <button
-                    onClick={() => handleUserUpdate(user)}
-                    className="text-blue-600 underline cursor-pointer"
-                  >
-                    Update
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+  <h2 className="text-xl font-semibold p-4 border-b">Users</h2>
+  <table className="w-full table-auto">
+    <thead className="bg-gray-100">
+      <tr>
+        <th className="border p-2 text-left">Name</th>
+        <th className="border p-2 text-left">Email</th>
+        <th className="border p-2 text-left">Role</th>
+        <th className="border p-2 text-left">Class</th>
+        <th className="border p-2 text-left">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {users.map((user) => (
+        <tr key={user._id} className="hover:bg-gray-50 transition">
+          <td className="border p-2">{user.name}</td>
+          <td className="border p-2">{user.email}</td>
+          <td className="border p-2">
+            <select
+              value={user.role}
+              onChange={(e) => {
+                const newRole = e.target.value as User["role"];
+                setUsers((prev) =>
+                  prev.map((u) =>
+                    u._id === user._id ? { ...u, role: newRole } : u
+                  )
+                );
+              }}
+              className="border p-1 rounded"
+            >
+              <option value="student">Student</option>
+              <option value="teacher">Teacher</option>
+              <option value="admin">Admin</option>
+            </select>
+          </td>
+          <td className="border p-2">
+            <select
+              value={user.classId || ""}
+              onChange={(e) =>
+                setUsers((prev) =>
+                  prev.map((u) =>
+                    u._id === user._id ? { ...u, classId: e.target.value } : u
+                  )
+                )
+              }
+              className="border p-1 rounded"
+            >
+              <option value="">No Class</option>
+              {classes.map((cls) => (
+                <option key={cls._id} value={cls._id}>
+                  {cls.name}
+                </option>
+              ))}
+            </select>
+          </td>
+          <td className="border p-2 flex gap-2">
+            {/* ✅ Update Button */}
+            <button
+              onClick={() => handleUserUpdate(user)}
+              className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition"
+            >
+              Update
+            </button>
+
+            {/* ❌ Delete Button */}
+            <button
+              onClick={() => handleUserDelete(user._id)}
+              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
       {/* ---------------- Class Management ---------------- */}
       <div className="bg-white shadow rounded-lg p-4 mb-6">
