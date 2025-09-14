@@ -511,7 +511,8 @@ export default function AdminDashboard() {
         </table>
       </div>
 
-      {selectedStudentDetail && (
+      {/* ---------------- Selected Student Portal ---------------- */}
+     {selectedStudentDetail && (
   <div className="bg-gray shadow rounded-lg p-4 mb-6">
     <h2 className="text-xl font-semibold mb-4">
       {selectedStudentDetail.name}'s Portal
@@ -612,80 +613,6 @@ export default function AdminDashboard() {
     </div>
   </div>
 )}
-
-          <div>
-            <h3 className="font-semibold mb-2">Assignments</h3>
-            {selectedStudentDetail.assignments?.length === 0 ? (
-              <p>No assignments given yet.</p>
-            ) : (
-              <table className="w-full border rounded">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="border p-2">Subject</th>
-                    <th className="border p-2">Teacher</th>
-                    <th className="border p-2">File</th>
-                    <th className="border p-2">Uploaded At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedStudentDetail.assignments?.map((a: Assignment) => (
-                    <tr key={a._id} className="hover:bg-gray-50">
-                      <td className="border p-2">{a.subject}</td>
-                      <td className="border p-2">
-                        {teacherStudents.find((t) => t._id === a.teacherId)?.name ||
-                          "Unknown"}
-                      </td>
-                      <td className="border p-2">
-                        <a
-                          href={a.url}
-                          target="_blank"
-                          className="text-blue-600 underline"
-                        >
-                          {a.filename || "View"}
-                        </a>
-                      </td>
-                      <td className="border p-2">
-                        {a.uploadedAt ? new Date(a.uploadedAt).toLocaleString() : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Quick view: schedule & assignments summary */}
-          {/* <div className="bg-gray-50 p-4 rounded shadow mt-4">
-            <h3 className="text-lg font-bold mb-2">
-              {selectedStudentDetail.name}'s Portal
-            </h3>
-
-            <h4 className="font-semibold mt-2">Teachers</h4>
-            <ul>
-              {selectedStudentDetail.schedule?.map((s: ScheduleItem, idx: number) => {
-                const teacher = users.find((u) => u._id === s.teacherId);
-                return (
-                  <li key={idx}>
-                    {teacher?.name} - {s.day} {s.time}
-                  </li>
-                );
-              })}
-            </ul>
-
-            <h4 className="font-semibold mt-2">Assignments</h4>
-            <ul>
-              {selectedStudentDetail.assignments?.map((a: Assignment) => {
-                const teacher = users.find((u) => u._id === a.teacherId);
-                return (
-                  <li key={a._id}>
-                    {a.title} (from {teacher?.name})
-                  </li>
-                );
-              })}
-            </ul>
-          </div> */}
-        </div>
-      )}
 
       {/* ---------------- Users (All) ---------------- */}
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
