@@ -165,21 +165,24 @@ export default function AdminDashboard() {
 };
 
 // ❌ Delete user
-const handleUserDelete = async (id: string) => {
-  if (!confirm("Are you sure you want to delete this user?")) return;
+const handleUserDelete = async (userId: string) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this user?");
+  if (!confirmDelete) return;
 
   try {
-    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    const data = await res.json();
-
-    alert(data.message);
+    const res = await fetch(`/api/users/${userId}`, {
+      method: "DELETE",
+    });
 
     if (res.ok) {
-      setUsers((prev) => prev.filter((u) => u._id !== id)); // frontend state se bhi remove
+      alert("User deleted successfully!");
+      setUsers((prev) => prev.filter((u) => u._id !== userId));
+    } else {
+      alert("Failed to delete user.");
     }
   } catch (err) {
     console.error("Delete error:", err);
-    alert("Error deleting user");
+    alert("Something went wrong while deleting user.");
   }
 };
   // ---------------- Assign teacher (simple) ----------------
