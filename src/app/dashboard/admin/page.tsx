@@ -242,43 +242,43 @@ export default function AdminDashboard() {
   }, [selectedStudentDetail, users]);
 
   // ---------------- Assign Teacher with Schedule ----------------
-const assignTeacherWithSchedule = async (studentId: string) => {
-  if (!studentId) {
-    alert("Select a student first (open student portal).");
-    return;
-  }
-  if (!selectedTeacherId || selectedDays.length === 0 || !startTime || !endTime) {
-    alert("Select teacher, at least one day, and time");
-    return;
-  }
+  const assignTeacherWithSchedule = async (studentId: string) => {
+    if (!studentId) {
+      alert("Select a student first (open student portal).");
+      return;
+    }
+    if (!selectedTeacherId || selectedDays.length === 0 || !startTime || !endTime) {
+      alert("Select teacher, at least one day, and time");
+      return;
+    }
 
-  try {
-    // multiple schedules generate
-    const schedules = selectedDays.map((day) => ({
-      day,
-      time: `${startTime}-${endTime}`,
-    }));
+    try {
+      // multiple schedules generate
+      const schedules = selectedDays.map((day) => ({
+        day,
+        time: `${startTime}-${endTime}`,
+      }));
 
-    const res = await fetch("/api/users/assign-teacher-schedule", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        studentId,
-        teacherId: selectedTeacherId,
-        schedule: schedules, // array send
-      }),
-    });
+      const res = await fetch("/api/users/assign-teacher-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId,
+          teacherId: selectedTeacherId,
+          schedule: schedules, // array send
+        }),
+      });
 
-    if (!res.ok) throw new Error("Failed to assign");
+      if (!res.ok) throw new Error("Failed to assign");
 
-    const data = await res.json();
-    alert(data.message);
+      const data = await res.json();
+      alert(data.message);
 
-    // update local users list
-    setUsers((prev) =>
-      prev.map((u) =>
-        u._id === studentId
-          ? {
+      // update local users list
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === studentId
+            ? {
               ...u,
               teacherId: selectedTeacherId,
               schedule: [
@@ -290,14 +290,14 @@ const assignTeacherWithSchedule = async (studentId: string) => {
                 })),
               ],
             }
-          : u
-      )
-    );
+            : u
+        )
+      );
 
-    // update selected student detail
-    setSelectedStudentDetail((prev: any) =>
-      prev && prev._id === studentId
-        ? {
+      // update selected student detail
+      setSelectedStudentDetail((prev: any) =>
+        prev && prev._id === studentId
+          ? {
             ...prev,
             teacherId: selectedTeacherId,
             schedule: [
@@ -309,19 +309,19 @@ const assignTeacherWithSchedule = async (studentId: string) => {
               })),
             ],
           }
-        : prev
-    );
+          : prev
+      );
 
-    // reset selection
-    setSelectedTeacherId("");
-    setSelectedDays([]);
-    setStartTime("");
-    setEndTime("");
-  } catch (err) {
-    console.error(err);
-    alert("Assignment failed");
-  }
-};
+      // reset selection
+      setSelectedTeacherId("");
+      setSelectedDays([]);
+      setStartTime("");
+      setEndTime("");
+    } catch (err) {
+      console.error(err);
+      alert("Assignment failed");
+    }
+  };
   // ---------------- Save New Meeting ----------------
   const saveMeeting = async () => {
     if (!newMeeting.topic) {
@@ -496,10 +496,10 @@ const assignTeacherWithSchedule = async (studentId: string) => {
                 </td>
                 <td className="border p-2">
                   <button
-                  onClick={() => {
-    console.log("Opening portal for:", student);
-    setSelectedStudentDetail(student);
-  }}
+                    onClick={() => {
+                      console.log("Opening portal for:", student);
+                      setSelectedStudentDetail(student);
+                    }}
                     className="text-indigo-600 underline"
                   >
                     View Portal
@@ -534,7 +534,6 @@ const assignTeacherWithSchedule = async (studentId: string) => {
                   </option>
                 ))}
               </select>
-
 
               <select
                 multiple
@@ -578,17 +577,24 @@ const assignTeacherWithSchedule = async (studentId: string) => {
 
           <div className="mb-4">
             <h3 className="font-semibold">Assigned Teachers</h3>
-            {teacherStudents.length === 0 ? (
-              <p>No teachers assigned yet.</p>
-            ) : (
-              <ul className="list-disc pl-5">
-                {teacherStudents.map((t) => (
-                  <li key={t._id}>
-                    {t.name} ({t.email})
-                  </li>
-                ))}
-              </ul>
+            {selectedStudentDetail?.teacherId && (
+              <div className="mt-4 border p-3 rounded bg-gray-50">
+                <h3 className="font-bold mb-2">Assigned Teacher</h3>
+                <p>
+                  Teacher ID: {selectedStudentDetail.teacherId}
+                </p>
+
+                <h4 className="font-semibold mt-2">Schedule:</h4>
+                <ul className="list-disc ml-5">
+                  {selectedStudentDetail.schedule?.map((s: any, idx: number) => (
+                    <li key={idx}>
+                      {s.day} — {s.time}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
+
           </div>
 
           <div>
