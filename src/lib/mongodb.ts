@@ -25,6 +25,19 @@ if (process.env.NODE_ENV === "development") {
 
 export default clientPromise;
 
+// ✅ helper functions
+export async function insertDoc(collection: string, doc: any) {
+  const client = await clientPromise;
+  const db = client.db("education-system");
+  return await db.collection(collection).insertOne(doc);
+}
+
+export async function getDocs(collection: string, query: any = {}) {
+  const client = await clientPromise;
+  const db = client.db("education-system");
+  return await db.collection(collection).find(query).toArray();
+}
+
 // import { MongoClient } from "mongodb";
 
 // const client = new MongoClient(process.env.MONGODB_URI!);
