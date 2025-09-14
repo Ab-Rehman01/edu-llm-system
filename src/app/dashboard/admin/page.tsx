@@ -511,91 +511,107 @@ export default function AdminDashboard() {
         </table>
       </div>
 
-      {/* ---------------- Selected Student Portal ---------------- */}
       {selectedStudentDetail && (
-        <div className="bg-gray shadow rounded-lg p-4 mb-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {selectedStudentDetail.name}'s Portal
-          </h2>
+  <div className="bg-gray shadow rounded-lg p-4 mb-6">
+    <h2 className="text-xl font-semibold mb-4">
+      {selectedStudentDetail.name}'s Portal
+    </h2>
 
-          {/* Assign teacher + schedule for this selected student */}
-          <div className="border p-2 mb-4 rounded">
-            <div className="font-semibold mb-2">Assign Teacher with Schedule</div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={selectedTeacherId}
-                onChange={(e) => setSelectedTeacherId(e.target.value)}
-                className="border p-1 rounded"
-              >
-                <option value="">Not Assigned</option>
-                {teachers.map((teacher) => (
-                  <option key={teacher._id} value={teacher._id}>
-                    {teacher.name}
-                  </option>
-                ))}
-              </select>
+    {/* Assign teacher + schedule for this selected student */}
+    <div className="border p-2 mb-4 rounded">
+      <div className="font-semibold mb-2">Assign Teacher with Schedule</div>
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Teacher dropdown */}
+        <select
+          value={selectedTeacherId}
+          onChange={(e) => setSelectedTeacherId(e.target.value)}
+          className="border p-1 rounded"
+        >
+          <option value="">Not Assigned</option>
+          {teachers.map((teacher) => (
+            <option key={teacher._id} value={teacher._id}>
+              {teacher.name}
+            </option>
+          ))}
+        </select>
 
-              <select
-                multiple
-                value={selectedDays}
-                onChange={(e) =>
-                  setSelectedDays(Array.from(e.target.selectedOptions, (option) => option.value))
-                }
-                className="border p-1 rounded"
-              >
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-
-              <p>Selected Days: {selectedDays.join(", ")}</p>
+        {/* Days checkboxes */}
+        <div className="flex flex-wrap gap-3">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+            <label key={d} className="flex items-center gap-1">
               <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="border p-1 rounded"
+                type="checkbox"
+                value={d}
+                checked={selectedDays.includes(d)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedDays([...selectedDays, d]);
+                  } else {
+                    setSelectedDays(selectedDays.filter((day) => day !== d));
+                  }
+                }}
               />
+              {d}
+            </label>
+          ))}
+        </div>
 
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="border p-1 rounded"
-              />
+        <p>Selected Days: {selectedDays.join(", ")}</p>
 
-              <button
-                onClick={() =>
-                  assignTeacherWithSchedule(selectedStudentDetail?._id || "")
-                }
-              >
-                Assign
-              </button>
-            </div>
-          </div>
+        {/* Time Inputs */}
+        <input
+          type="time"
+          value={startTime}
+          onChange={(e) => setStartTime(e.target.value)}
+          className="border p-1 rounded"
+        />
 
-          <div className="mb-4">
-            <h3 className="font-semibold">Assigned Teachers</h3>
-            {selectedStudentDetail?.teacherId && (
-              <div className="mt-4 border p-3 rounded bg-gray-50">
-                <h3 className="font-bold mb-2">Assigned Teacher</h3>
-                <p>
-                  Teacher ID: {selectedStudentDetail.teacherId}
-                </p>
+        <input
+          type="time"
+          value={endTime}
+          onChange={(e) => setEndTime(e.target.value)}
+          className="border p-1 rounded"
+        />
 
-                <h4 className="font-semibold mt-2">Schedule:</h4>
-                <ul className="list-disc ml-5">
-                  {selectedStudentDetail.schedule?.map((s: any, idx: number) => (
-                    <li key={idx}>
-                      {s.day} — {s.time}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+        <button
+          className="bg-blue-500 text-white px-3 py-1 rounded"
+          onClick={() =>
+            assignTeacherWithSchedule(selectedStudentDetail?._id || "")
+          }
+        >
+          Assign
+        </button>
+      </div>
+    </div>
 
-          </div>
+    {/* Assigned Teacher + Schedule */}
+    <div className="mb-4">
+      <h3 className="font-semibold">Assigned Teacher</h3>
+      {selectedStudentDetail?.teacherId && (
+        <div className="mt-4 border p-3 rounded bg-gray-50">
+          <h3 className="font-bold mb-2">Assigned Teacher</h3>
+          <p>
+            Teacher Name:{" "}
+            {
+              teachers.find(
+                (t) => t._id === selectedStudentDetail.teacherId
+              )?.name
+            }
+          </p>
+
+          <h4 className="font-semibold mt-2">Schedule:</h4>
+          <ul className="list-disc ml-5">
+            {selectedStudentDetail.schedule?.map((s: any, idx: number) => (
+              <li key={idx}>
+                {s.day} — {s.time}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
           <div>
             <h3 className="font-semibold mb-2">Assignments</h3>
