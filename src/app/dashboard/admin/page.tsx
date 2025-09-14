@@ -147,7 +147,7 @@ useEffect(() => {
 const handleUserUpdate = async (user: User) => {
   try {
     const res = await fetch(`/api/users/update-role`, {
-      method: "POST", // yahan PUT ki jagah POST
+      method: "POST", 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user._id, role: user.role }),
     });
@@ -503,7 +503,7 @@ const handleUserUpdate = async (user: User) => {
 
       {/* ---------------- Selected Student Portal ---------------- */}
       {selectedStudentDetail && (
-        <div className="bg-white shadow rounded-lg p-4 mb-6">
+        <div className="bg-gray shadow rounded-lg p-4 mb-6">
           <h2 className="text-xl font-semibold mb-4">
             {selectedStudentDetail.name}'s Portal
           </h2>
@@ -623,7 +623,7 @@ const handleUserUpdate = async (user: User) => {
           </div>
 
           {/* Quick view: schedule & assignments summary */}
-          <div className="bg-gray-50 p-4 rounded shadow mt-4">
+          {/* <div className="bg-gray-50 p-4 rounded shadow mt-4">
             <h3 className="text-lg font-bold mb-2">
               {selectedStudentDetail.name}'s Portal
             </h3>
@@ -651,7 +651,7 @@ const handleUserUpdate = async (user: User) => {
                 );
               })}
             </ul>
-          </div>
+          </div> */}
         </div>
       )}
 
