@@ -1,3 +1,4 @@
+//dashboard/admin/page.tsx
 "use client";
 
 import AssignmentUpload from "@/components/AssignmentUpload";
@@ -495,7 +496,10 @@ const assignTeacherWithSchedule = async (studentId: string) => {
                 </td>
                 <td className="border p-2">
                   <button
-                    onClick={() => loadStudentDetail(student._id)}
+                  onClick={() => {
+    console.log("Opening portal for:", student);
+    setSelectedStudentDetail(student);
+  }}
                     className="text-indigo-600 underline"
                   >
                     View Portal
